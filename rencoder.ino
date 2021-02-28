@@ -11,6 +11,10 @@ volatile byte bFlag = 0;
 volatile byte encoderPos = 0;
 volatile byte oldEncPos = 0;
 volatile byte reading = 0;
+int timeNum = 1;
+int month;
+boolean selected = false;
+
 
 int counter = 0;
 int currentStateCLK;
@@ -24,6 +28,7 @@ boolean ButtonPressed = false;
 
 void setup() {
   //Don't change anything below
+  lcd.begin(20,4); // Initialize LCD
   pinMode(pinA, INPUT_PULLUP); 
   pinMode(pinB, INPUT_PULLUP);
   pinMode(CLK, INPUT_PULLUP);
@@ -35,6 +40,7 @@ void setup() {
   TimeNow1 = millis();
   //Don't change anything above
 }
+
 void button(){
   int btnState = digitalRead(CLK);
   if (btnState == LOW) {
@@ -73,6 +79,83 @@ void PinB(){
     aFlag = 1; 
   }
 }
+
+void setupTime() {
+  lcd.clear();
+  lcd.setCursor(2,0);
+  lcd.print(“Setting Up Time!”);
+  lcd.setCursor(3,1);
+  month = 0;
+  day = 0;
+  setupMonth();
+
+void setupMonth() {
+  while (!buttonPressed && !selected) {
+  lcd.print(“Choose Month:”);
+  lcd.setCursor(9,3);
+  lcd.print(“”+timeNum);
+  if (oldEncPos == 24 && encoderPos == 1) {
+    timeNum++;
+    if (buttonPressed) {
+      if (timeNum > 0 && timeNum < 13) {
+        month = timeNum;
+        selected = true;
+      }
+      else {
+        lcd.setCursor(2,3);
+        lcd.print(“Incorrect Entry!”);
+        setupMonth();
+      }     
+    }  
+  }
+  else if (oldEncPos == 1 && encoderPos == 24) {
+    timeNum--;
+    if (buttonPressed) {
+      if (timeNum > 0 && timeNum < 13) {
+        month = timeNum;
+        selected = true;
+      }
+      else {
+        lcd.setCursor(2,3);
+        lcd.print(“Incorrect Entry!”);
+        setupMonth();
+      }       
+    }
+  }
+  else if (oldEncPos < encoderPos) {
+    timeNum++;
+    if (buttonPressed) {
+      if (timeNum > 0 && timeNum < 13) {
+        month = timeNum;
+        selected = true;
+      }
+      else {
+        lcd.setCursor(2,3);
+        lcd.print(“Incorrect Entry!”);
+        setupMonth();
+      }       
+    }
+  }
+  else if (oldEncPos > encoderPos) {
+    timeNum--;
+    if (buttonPressed) {
+      if (timeNum > 0 && timeNum < 13) {
+        month = timeNum;
+        selected = true;
+      }
+      else {
+        lcd.setCursor(2,3);
+        lcd.print(“Incorrect Entry!”);
+        setupMonth();
+      }       
+    }
+  }
+
+  lcd.print(2,3);
+  lcd.print(“Selection: “+month);
+  delay(2000);
+}
+  
 //Don't change anything above
 void loop(){
   button();
