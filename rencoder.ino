@@ -60,7 +60,7 @@ void button() {
     }
     lastButtonPress = millis();
   }
-  delay(1);
+  delay(100);
   ButtonPressed = false;
 
 }
@@ -106,6 +106,8 @@ void setupMonth() {
     lcd.print("" + timeNum);
     if (oldEncPos == 24 && encoderPos == 1) {
       timeNum++;
+      lcd.setCursor(9, 3);
+      lcd.print("" + timeNum);
       if (ButtonPressed) {
         if (timeNum > 0 && timeNum < 13) {
           month1 = timeNum;
@@ -120,6 +122,8 @@ void setupMonth() {
     }
     else if (oldEncPos == 1 && encoderPos == 24) {
       timeNum--;
+      lcd.setCursor(9, 3);
+      lcd.print("" + timeNum);
       if (ButtonPressed) {
         if (timeNum > 0 && timeNum < 13) {
           month1 = timeNum;
@@ -134,6 +138,8 @@ void setupMonth() {
     }
     else if (oldEncPos < encoderPos) {
       timeNum++;
+      lcd.setCursor(9, 3);
+      lcd.print("" + timeNum);
       if (ButtonPressed) {
         if (timeNum > 0 && timeNum < 13) {
           month1 = timeNum;
@@ -148,6 +154,8 @@ void setupMonth() {
     }
     else if (oldEncPos > encoderPos) {
       timeNum--;
+      lcd.setCursor(9, 3);
+      lcd.print("" + timeNum);
       if (ButtonPressed) {
         if (timeNum > 0 && timeNum < 13) {
           month1 = timeNum;
