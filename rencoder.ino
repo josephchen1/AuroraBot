@@ -1,11 +1,4 @@
 #include <TimeLib.h>
-
-/*
- * TimeLib.h source code:
- * https://github.com/PaulStoffregen/Time
- * Code from:
- * https://www.instructables.com/Improved-Arduino-Rotary-Encoder-Reading/
-*/
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -55,14 +48,12 @@ void button() {
   int btnState = digitalRead(CLK);
   if (btnState == LOW) {
     if (millis() - lastButtonPress > 50) {
-      Serial.println("Button pressed!");
+      //Serial.println("Button pressed!");
       ButtonPressed = true;
     }
     lastButtonPress = millis();
   }
   delay(100);
-  ButtonPressed = false;
-
 }
 
 //Don't change anything below
@@ -96,83 +87,32 @@ void setupTime() {
   lcd.print("Setting Up Time!");
   month1 = 0;
   day1 = 0;
+  lcd.setCursor(3, 1);
+  lcd.print("Choose Month:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
   setupMonth();
 }
-void setupMonth() {
-  while (!ButtonPressed && !selected) {
-    lcd.setCursor(3, 1);
-    lcd.print("Choose Month:");
-    lcd.setCursor(9, 3);
-    lcd.print("" + timeNum);
-    if (oldEncPos == 24 && encoderPos == 1) {
-      timeNum++;
-      lcd.setCursor(9, 3);
-      lcd.print("" + timeNum);
-      if (ButtonPressed) {
-        if (timeNum > 0 && timeNum < 13) {
-          month1 = timeNum;
-          selected = true;
-        }
-        else {
-          lcd.setCursor(2, 3);
-          lcd.print("Incorrect Entry!");
-          setupMonth();
-        }
-      }
-    }
-    else if (oldEncPos == 1 && encoderPos == 24) {
-      timeNum--;
-      lcd.setCursor(9, 3);
-      lcd.print("" + timeNum);
-      if (ButtonPressed) {
-        if (timeNum > 0 && timeNum < 13) {
-          month1 = timeNum;
-          selected = true;
-        }
-        else {
-          lcd.setCursor(2, 3);
-          lcd.print("Incorrect Entry!");
-          setupMonth();
-        }
-      }
-    }
-    else if (oldEncPos < encoderPos) {
-      timeNum++;
-      lcd.setCursor(9, 3);
-      lcd.print("" + timeNum);
-      if (ButtonPressed) {
-        if (timeNum > 0 && timeNum < 13) {
-          month1 = timeNum;
-          selected = true;
-        }
-        else {
-          lcd.setCursor(2, 3);
-          lcd.print("Incorrect Entry!");
-          setupMonth();
-        }
-      }
-    }
-    else if (oldEncPos > encoderPos) {
-      timeNum--;
-      lcd.setCursor(9, 3);
-      lcd.print("" + timeNum);
-      if (ButtonPressed) {
-        if (timeNum > 0 && timeNum < 13) {
-          month1 = timeNum;
-          selected = true;
-        }
-        else {
-          lcd.setCursor(2, 3);
-          lcd.print("Incorrect Entry!");
-          setupMonth();
-        }
-      }
-    }
 
-    lcd.setCursor(2, 3);
-    lcd.print("Selection: " + month1);
-    delay(2000);
-  }
+void setupMonth() {
+  month1 = 0;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 12){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 12, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+
+  ButtonPressed = false;
+  Serial.println("done");
 }
 void loop() {
   if (i == 1) {
@@ -180,7 +120,7 @@ void loop() {
   }
   i = 2;
     if(ButtonPressed){
-      Serial.print("Button Pressed");
+      //Serial.print("Button Pressed");
     }
     if(oldEncPos != encoderPos) {
       if(encoderPos==25){
