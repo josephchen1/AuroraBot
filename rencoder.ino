@@ -19,10 +19,14 @@ volatile byte bFlag = 0;
 volatile byte encoderPos = 0;
 volatile byte oldEncPos = 0;
 volatile byte reading = 0;
+
 int timeNum = 1;
 int month1;
 int day1;
 int year1;
+int hour1;
+int min1;
+
 boolean selected = false;
 
 int counter = 0;
@@ -101,6 +105,7 @@ void setupTime() {
   lcd.setCursor(9, 3);
   lcd.print(timeNum);
   setupMonth();
+  timeNum = 0;
   lcd.clear();
   lcd.setCursor(2, 0);
   lcd.print("Setting Up Time!");
@@ -109,14 +114,35 @@ void setupTime() {
   lcd.setCursor(9, 3);
   lcd.print(timeNum);
   setupDay();
+  timeNum = 0;
   lcd.clear();
   lcd.setCursor(2, 0);
   lcd.print("Setting Up Time!");
   lcd.setCursor(4, 1);
   lcd.print("Choose Year:");
-  lcd.setCursor(9, 3);
+  lcd.setCursor(8, 3);
   lcd.print(timeNum);
   setupYear();
+  timeNum = 0;
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(4, 1);
+  lcd.print("Choose Hour:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupHour();
+  timeNum = 0;
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(5, 1);
+  lcd.print("Choose Min:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupMin();
+  timeNum = 0;
+  setTime(hour1,min1,30,day1,month1,year1);
 }
 
 void setupMonth() {
@@ -138,10 +164,11 @@ void setupMonth() {
    }
   ButtonPressed = false;
   month1 = timeNum;
-  lcd.setCursor(2,3);
+  lcd.setCursor(4,3);
   lcd.print("Selection: ");
   lcd.print(month1);
   Serial.println("Month Set: " + month1);
+  delay(1500);
 }
 
 void setupDay() {
@@ -163,10 +190,11 @@ void setupDay() {
    }
   ButtonPressed = false;
   day1 = timeNum;
-  lcd.setCursor(2,3);
+  lcd.setCursor(4,3);
   lcd.print("Selection: ");
   lcd.print(day1);
   Serial.println("Day Set: " + day1);
+  delay(1500);
 }
 
 void setupYear() {
@@ -188,10 +216,63 @@ void setupYear() {
    }
   ButtonPressed = false;
   year1 = timeNum;
-  lcd.setCursor(1,3);
+  lcd.setCursor(2,3);
   lcd.print("Selection: ");
   lcd.print(year1);
   Serial.println("Year Set: " + year1);
+  delay(1500);
+}
+
+void setupHour() {
+  hour1 = 0;
+  timeNum = 1;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 24){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 24, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  hour1 = timeNum;
+  lcd.setCursor(4,3);
+  lcd.print("Selection: ");
+  lcd.print(hour1);
+  Serial.println("Hour Set: " + year1);
+  delay(1500);
+}
+
+void setupMin() {
+  min1 = 0;
+  timeNum = 0;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 60){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 60, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  min1 = timeNum;
+  lcd.setCursor(4,3);
+  lcd.print("Selection: ");
+  lcd.print(min1);
+  Serial.println("Min Set: " + year1);
+  delay(1500);
 }
 
 void loop() {
