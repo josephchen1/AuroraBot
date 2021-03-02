@@ -1,4 +1,11 @@
 #include <TimeLib.h>
+
+/*
+ * TimeLib.h source code:
+ * https://github.com/PaulStoffregen/Time
+ * Code from:
+ * https://www.instructables.com/Improved-Arduino-Rotary-Encoder-Reading/
+*/
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -15,6 +22,7 @@ volatile byte reading = 0;
 int timeNum = 1;
 int month1;
 int day1;
+int year1;
 boolean selected = false;
 
 int counter = 0;
@@ -87,15 +95,33 @@ void setupTime() {
   lcd.print("Setting Up Time!");
   month1 = 0;
   day1 = 0;
+  year1 = 0;
   lcd.setCursor(3, 1);
   lcd.print("Choose Month:");
   lcd.setCursor(9, 3);
   lcd.print(timeNum);
   setupMonth();
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(5, 1);
+  lcd.print("Choose Day:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupDay();
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(4, 1);
+  lcd.print("Choose Year:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupYear();
 }
 
 void setupMonth() {
   month1 = 0;
+  timeNum = 1;
   while(!ButtonPressed){
       button();
       if(oldEncPos < encoderPos && timeNum < 12){
@@ -110,10 +136,64 @@ void setupMonth() {
       lcd.print(" ");
       //TODO: u can go past 12, doesnt show on arduino, but apparently it factors into return rotate #
    }
-
   ButtonPressed = false;
-  Serial.println("done");
+  month1 = timeNum;
+  lcd.setCursor(2,3);
+  lcd.print("Selection: ");
+  lcd.print(month1);
+  Serial.println("Month Set: " + month1);
 }
+
+void setupDay() {
+  day1 = 0;
+  timeNum = 1;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 31){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 31, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  day1 = timeNum;
+  lcd.setCursor(2,3);
+  lcd.print("Selection: ");
+  lcd.print(day1);
+  Serial.println("Day Set: " + day1);
+}
+
+void setupYear() {
+  year1 = 0;
+  timeNum = 2021;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 2100){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 2021){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(8, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 2100, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  year1 = timeNum;
+  lcd.setCursor(1,3);
+  lcd.print("Selection: ");
+  lcd.print(year1);
+  Serial.println("Year Set: " + year1);
+}
+
 void loop() {
   if (i == 1) {
     setupTime();
