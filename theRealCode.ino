@@ -1,5 +1,15 @@
-#include <LiquidCrystal_I2C.h>
 #include <TimeLib.h>
+
+/*
+ * TimeLib.h source code:
+ * https://github.com/PaulStoffregen/Time
+ * Code from:
+ * https://www.instructables.com/Improved-Arduino-Rotary-Encoder-Reading/
+*/
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+int i = 1;
 static int pinA = 2;
 static int pinB = 3;
 static int CLK = 4;
@@ -9,11 +19,20 @@ volatile byte bFlag = 0;
 volatile byte encoderPos = 0;
 volatile byte oldEncPos = 0;
 volatile byte reading = 0;
-int i=1;
+
+int timeNum = 1;
+int month1;
+int day1;
+int year1;
+int hour1;
+int min1;
+
+boolean selected = false;
+
 int counter = 0;
 int currentStateCLK;
 int lastStateCLK;
-String currentDir ="";
+String currentDir = "";
 unsigned long lastButtonPress = 0;
 float TimeNow2;
 float TimeNow1;
@@ -23,90 +42,256 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 void setup() {
   //Don't change anything below
-  pinMode(pinA, INPUT_PULLUP); 
+  pinMode(pinA, INPUT_PULLUP);
   pinMode(pinB, INPUT_PULLUP);
   pinMode(CLK, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(2),PinA,FALLING);
-  attachInterrupt(digitalPinToInterrupt(3),PinB,FALLING);
-  attachInterrupt(digitalPinToInterrupt(4),button, FALLING);
+  attachInterrupt(digitalPinToInterrupt(2), PinA, FALLING);
+  attachInterrupt(digitalPinToInterrupt(3), PinB, FALLING);
+  attachInterrupt(digitalPinToInterrupt(4), button, FALLING);
   Serial.begin(9600);
   lastStateCLK = digitalRead(CLK);
   TimeNow1 = millis();
-  lcd.init();
+  lcd.init();                      // initialize the lcd
   lcd.backlight();
   Serial.begin(9600);
+  //Don't change anything above
 }
-void button(){
+void button() {
   int btnState = digitalRead(CLK);
-
-  //If we detect LOW signal, button is pressed
   if (btnState == LOW) {
     if (millis() - lastButtonPress > 50) {
+      //Serial.println("Button pressed!");
       ButtonPressed = true;
-      Serial.print("Button Pressed");
     }
     lastButtonPress = millis();
-  }else{
-    ButtonPressed = false;
   }
-  delay(1);
-
+  delay(100);
 }
 
 //Don't change anything below
-void PinA(){
+void PinA() {
   reading = PIND & 0xC;
-  if(reading == B00001100 && aFlag) {
-    encoderPos --; 
+  if (reading == B00001100 && aFlag) {
+    encoderPos --;
     bFlag = 0;
     aFlag = 0;
   }
-  else if (reading == B00000100){
+  else if (reading == B00000100) {
     bFlag = 1;
   }
 }
 
-void PinB(){
+void PinB() {
   reading = PIND & 0xC;
   if (reading == B00001100 && bFlag) {
     encoderPos ++;
     bFlag = 0;
     aFlag = 0;
   }
-  else if (reading == B00001000){
-    aFlag = 1; 
+  else if (reading == B00001000) {
+    aFlag = 1;
   }
 }
 //Don't change anything above
-void loop(){
-  button();
-    lcd.print("How many hours");
-    lcd.setCursor(0, 1);
-    lcd.print("did you sleep");
-    lcd.setCursor(0, 2);
-    lcd.print("last night?");
-    lcd.setCursor(0, 3);
-    while(!ButtonPressed){
+void setupTime() {
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  month1 = 0;
+  day1 = 0;
+  year1 = 0;
+  lcd.setCursor(3, 1);
+  lcd.print("Choose Month:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupMonth();
+  timeNum = 0;
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(5, 1);
+  lcd.print("Choose Day:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupDay();
+  timeNum = 0;
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(4, 1);
+  lcd.print("Choose Year:");
+  lcd.setCursor(8, 3);
+  lcd.print(timeNum);
+  setupYear();
+  timeNum = 0;
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(4, 1);
+  lcd.print("Choose Hour:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupHour();
+  timeNum = 0;
+  lcd.clear();
+  lcd.setCursor(2, 0);
+  lcd.print("Setting Up Time!");
+  lcd.setCursor(5, 1);
+  lcd.print("Choose Min:");
+  lcd.setCursor(9, 3);
+  lcd.print(timeNum);
+  setupMin();
+  timeNum = 0;
+  setTime(hour1,min1,30,day1,month1,year1);
+}
+
+void setupMonth() {
+  month1 = 0;
+  timeNum = 1;
+  while(!ButtonPressed){
       button();
-      lcd.setCursor(18, 3);
+      if(oldEncPos < encoderPos && timeNum < 12){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 12, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  month1 = timeNum;
+  lcd.setCursor(4,3);
+  lcd.print("Selection: ");
+  lcd.print(month1);
+  Serial.println("Month Set: " + month1);
+  delay(1500);
+}
+
+void setupDay() {
+  day1 = 0;
+  timeNum = 1;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 31){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 31, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  day1 = timeNum;
+  lcd.setCursor(4,3);
+  lcd.print("Selection: ");
+  lcd.print(day1);
+  Serial.println("Day Set: " + day1);
+  delay(1500);
+}
+
+void setupYear() {
+  year1 = 0;
+  timeNum = 2021;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 2100){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 2021){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(8, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 2100, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  year1 = timeNum;
+  lcd.setCursor(2,3);
+  lcd.print("Selection: ");
+  lcd.print(year1);
+  Serial.println("Year Set: " + year1);
+  delay(1500);
+}
+
+void setupHour() {
+  hour1 = 0;
+  timeNum = 1;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 24){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 24, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  hour1 = timeNum;
+  lcd.setCursor(4,3);
+  lcd.print("Selection: ");
+  lcd.print(hour1);
+  Serial.println("Hour Set: " + year1);
+  delay(1500);
+}
+
+void setupMin() {
+  min1 = 0;
+  timeNum = 0;
+  while(!ButtonPressed){
+      button();
+      if(oldEncPos < encoderPos && timeNum < 60){
+        oldEncPos = encoderPos;
+        timeNum++;
+      } else if(oldEncPos > encoderPos && timeNum > 1){
+        oldEncPos = encoderPos;
+        timeNum--;
+      }
+      lcd.setCursor(9, 3);
+      lcd.print(timeNum);
+      lcd.print(" ");
+      //TODO: u can go past 60, doesnt show on arduino, but apparently it factors into return rotate #
+   }
+  ButtonPressed = false;
+  min1 = timeNum;
+  lcd.setCursor(4,3);
+  lcd.print("Selection: ");
+  lcd.print(min1);
+  Serial.println("Min Set: " + year1);
+  delay(1500);
+}
+
+void loop() {
+  if (i == 1) {
+    setupTime();
+  }
+  i = 2;
+    if(ButtonPressed){
+      //Serial.print("Button Pressed");
+    }
+    if(oldEncPos != encoderPos) {
       if(encoderPos==25){
         encoderPos = 24;
+        Serial.println("This is the end, please scroll the other side");
       }else if(encoderPos==255){
         encoderPos = 0;
-      }
-      lcd.print(encoderPos);
+        Serial.println("This is the end, please scroll the other side");
+     }
+      Serial.println(encoderPos);
+      oldEncPos = encoderPos;
     }
-    if(ButtonPressed){
-        Serial.print("Button");
-        int sleepTime = encoderPos;
-        lcd.clear();
-        lcd.setCursor(0, 1);
-        lcd.print("You slept for");
-        lcd.setCursor(0, 2);
-        lcd.print(sleepTime);
-        lcd.setCursor(0,3);
-        lcd.print("hours");
-        delay(10000);
-        lcd.clear();
-      }
 }
