@@ -1,13 +1,23 @@
 #include <TimeLib.h>
-
-/*
- * TimeLib.h source code:
- * https://github.com/PaulStoffregen/Time
- * Code from:
- * https://www.instructables.com/Improved-Arduino-Rotary-Encoder-Reading/
-*/
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+
+#define DHTPIN ?????
+//TODO: Add pin #
+#define DHTTYPE DHT11
+
+//Custom degree character
+byte degree[8] = {
+ B00110,
+ B01001,
+ B01001,
+ B00110,
+ B00000,
+ B00000,
+ B00000,
+ B00000,
+};
 
 int i = 1;
 static int pinA = 2;
@@ -27,6 +37,8 @@ int year1;
 int hour1;
 int min1;
 
+int menu = 1;
+
 boolean selected = false;
 
 int counter = 0;
@@ -37,8 +49,12 @@ unsigned long lastButtonPress = 0;
 float TimeNow2;
 float TimeNow1;
 boolean ButtonPressed = false;
+
+//Initialize LCD Screen
 LiquidCrystal_I2C lcd(0x27, 20, 4);
-//Don't change anything above
+
+//Initialize DHT Sensor
+DHT dht(DHTPIN, DHTTYPE);
 
 void setup() {
   //Don't change anything below
@@ -51,9 +67,9 @@ void setup() {
   Serial.begin(9600);
   lastStateCLK = digitalRead(CLK);
   TimeNow1 = millis();
-  lcd.init();                      // initialize the lcd
+  lcd.init(); //Starting LCD
   lcd.backlight();
-  Serial.begin(9600);
+  dht.begin(); //Starting DHT Sensor
   //Don't change anything above
 }
 void button() {
@@ -167,7 +183,8 @@ void setupMonth() {
   lcd.setCursor(4,3);
   lcd.print("Selection: ");
   lcd.print(month1);
-  Serial.println("Month Set: " + month1);
+  Serial.print("Month Set: ");
+  Serial.println(month1);
   delay(1500);
 }
 
@@ -193,7 +210,8 @@ void setupDay() {
   lcd.setCursor(4,3);
   lcd.print("Selection: ");
   lcd.print(day1);
-  Serial.println("Day Set: " + day1);
+  Serial.print("Day Set: ");
+  Serial.println(day1);
   delay(1500);
 }
 
@@ -219,7 +237,8 @@ void setupYear() {
   lcd.setCursor(2,3);
   lcd.print("Selection: ");
   lcd.print(year1);
-  Serial.println("Year Set: " + year1);
+  Serial.print("Year Set: ");
+  Serial.println(year1);
   delay(1500);
 }
 
@@ -245,7 +264,8 @@ void setupHour() {
   lcd.setCursor(4,3);
   lcd.print("Selection: ");
   lcd.print(hour1);
-  Serial.println("Hour Set: " + year1);
+  Serial.print("Hour Set: ");
+  Serial.println(hour1);
   delay(1500);
 }
 
@@ -271,27 +291,81 @@ void setupMin() {
   lcd.setCursor(4,3);
   lcd.print("Selection: ");
   lcd.print(min1);
-  Serial.println("Min Set: " + year1);
+  Serial.print("Min Set: ");
+  Serial.println(min1);
   delay(1500);
 }
 
+void displayTempTime() {
+  //Sensor takes a bit to read sometimes, best to delay at 2
+  delay(2000);
+  // Read temperature as Celsius
+  float c = dht.readTemperature();
+  // Read temperature as Fahrenheit (isFahrenheit = true)
+  float f = dht.readTemperature(true);
+  //Date
+  String d = (String)month()+"/"+(String)day()+"/"+(String)year();
+  //Time
+  String t = (String)hour()+":"+(String)minute(); //add +":"+(String)second() for seconds
+
+  lcd.createChar(0, degree);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Date = ");
+  lcd.print(d);
+  lcd.setCursor(0,1);
+  lcd.print("Time = ");
+  lcd.print(t);
+  lcd.setCursor(0,2);
+  lcd.print("Temp = ");
+  lcd.print((int)f);
+  lcd.write((byte)0);
+  lcd.print("F/");
+  lcd.print((int)c);
+  lcd.write((byte)0);
+  lcd.print("C");
+}
+
+void menuButton() {
+  //add code that checks if main menu button is pressed
+  mainMenu();
+}
+
+void mainMenu() {
+  //add code
+}
+
+void lightingControl() {
+  //add code
+}
+
 void loop() {
-  if (i == 1) {
+  if (menu == 1) {
+    //Time Setup
     setupTime();
+    menu++;
+  } else if (menu == 2) {
+    displayTempTime();
+  } else if (menu == 3) {
+    
+  } else if (menu == 4) {
+    
+  } else if (menu == 5) {
+    
   }
-  i = 2;
-    if(ButtonPressed){
-      //Serial.print("Button Pressed");
-    }
-    if(oldEncPos != encoderPos) {
-      if(encoderPos==25){
-        encoderPos = 24;
-        Serial.println("This is the end, please scroll the other side");
-      }else if(encoderPos==255){
-        encoderPos = 0;
-        Serial.println("This is the end, please scroll the other side");
-     }
-      Serial.println(encoderPos);
-      oldEncPos = encoderPos;
-    }
+  
+  if(ButtonPressed){
+    //Serial.print("Button Pressed");
+  }
+  if(oldEncPos != encoderPos) {
+    if(encoderPos==25){
+      encoderPos = 24;
+      Serial.println("This is the end, please scroll the other side");
+    }else if(encoderPos==255){
+      encoderPos = 0;
+      Serial.println("This is the end, please scroll the other side");
+   }
+    Serial.println(encoderPos);
+    oldEncPos = encoderPos;
+  }
 }
