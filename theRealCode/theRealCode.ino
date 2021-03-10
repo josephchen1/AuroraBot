@@ -1,37 +1,37 @@
 #include <LiquidCrystal_I2C.h>
 #include <TimeLib.h>
 #include <Vector.h>
-#include <DHT.h>//add lib
+#include <DHT.h>
+#include <Adafruit_NeoPixel.h>
+#define DHTPIN A0
+#define DHTTYPE DHT11
 
+float pf;
+float pc;
 static int pinA = 2;
 static int pinB = 3;
 static int CLK = 4;
+static int LED = 11;
+static int MENUBTN = 6;
+
+byte degree[8] = {
+  B00110,
+  B01001,
+  B01001,
+  B00110,
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+};
+
 volatile byte aFlag = 0;
 volatile byte bFlag = 0;
 volatile byte encoderPos = 0;
 volatile byte oldEncPos = 0;
 volatile byte reading = 0;
 
-#define DHTPIN A0
-//TODO: Add pin #
-#define DHTTYPE DHT11
-float pf;
-float pc;
-
-//Custom degree character
-byte degree[8] = {
- B00110,
- B01001,
- B01001,
- B00110,
- B00000,
- B00000,
- B00000,
- B00000,
-};
-
 int i = 1;
-int menu = 1;
 int counter = 0;
 int currentStateCLK;
 int lastStateCLK;
@@ -48,7 +48,6 @@ int year1;
 int hour1;
 int min1;
 
-boolean selected = false;
 int daysActive = 0;
 int avgSleepTime = 0;
 int totalSleepTime = 0;
@@ -59,10 +58,11 @@ int goalMidday = 8;
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 DHT dht(DHTPIN, DHTTYPE);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel
+                          (28, LED, NEO_GRB + NEO_KHZ800);
+
 Vector<int> sleepData;
 Vector<int> middayData;
-
-
 void setup() {
   //Don't change anything below
   pinMode(pinA, INPUT_PULLUP);
@@ -77,6 +77,9 @@ void setup() {
   lcd.init();
   lcd.backlight();
   Serial.begin(9600);
+  strip.begin();
+  strip.setBrightness(85);
+  strip.show();
 }
 void button() {
   int btnState = digitalRead(CLK);
@@ -94,8 +97,6 @@ void button() {
   delay(1);
 
 }
-
-//Don't change anything below
 void PinA() {
   reading = PIND & 0xC;
   if (reading == B00001100 && aFlag) {
@@ -107,7 +108,6 @@ void PinA() {
     bFlag = 1;
   }
 }
-
 void PinB() {
   reading = PIND & 0xC;
   if (reading == B00001100 && bFlag) {
@@ -330,6 +330,292 @@ void middayCheckIn() {
     }
   }
 }
+void breathingExercise() {
+  int TOTAL_LEDS = 28;
+  float MaximumBrightness = 255;
+  float SpeedFactor = 0.005;
+  float StepDelay = 5;
+
+  // Make the lights breathe
+  for (int i = 0; i < 65535; i++) {
+    float intensity = MaximumBrightness / 2.0 * (1.0 + sin(SpeedFactor * i));
+    strip.setBrightness(intensity);
+    for (int ledNumber = 0; ledNumber < TOTAL_LEDS; ledNumber++) {
+      strip.setPixelColor(ledNumber, 0, 0, 255);
+    }
+
+    strip.show();
+    delay(StepDelay);
+  }
+}
+void detoxDrink() {
+  button();
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("1. Classic Green");
+  lcd.setCursor(0, 1);
+  lcd.print("2. Choccy Peanut");
+  lcd.setCursor(0, 2);
+  lcd.print("3. Pina Colada");
+  lcd.setCursor(0, 3);
+  lcd.print("4. Very Berries");
+  while (!ButtonPressed) {
+    button();
+    lcd.setCursor(18, 3);
+    if (encoderPos >= 5) {
+      encoderPos = 4;
+    } else if (encoderPos == 255) {
+      encoderPos = 0;
+    }
+    lcd.print(encoderPos);
+  }
+  if (ButtonPressed) {
+    int drinkSelection = encoderPos;
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("For your drink");
+    lcd.setCursor(0, 1);
+    lcd.print("simply add all");
+    lcd.setCursor(0, 2);
+    lcd.print("ingredients in a");
+    lcd.setCursor(0, 3);
+    lcd.print("and blend them, yum!");
+    delay(5000);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("You will need");
+    lcd.setCursor(0, 1);
+    lcd.print("these ingredients!");
+    delay(3000);
+    lcd.clear();
+    if (drinkSelection == 1) {
+      lcd.setCursor(0, 0);
+      lcd.print("1. a frozen banana");
+      lcd.setCursor(0, 1);
+      lcd.print("Bananas help you");
+      lcd.setCursor(0, 2);
+      lcd.print("with digestion!");
+      while (!ButtonPressed) {
+        button();
+      }
+      if (ButtonPressed) {
+        delay(3000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("2. a cup of spinach");
+        lcd.setCursor(0, 1);
+        lcd.print("Spinach benefits");
+        lcd.setCursor(0, 2);
+        lcd.print("your eye health!");
+        while (!ButtonPressed) {
+          button();
+        }
+        if (ButtonPressed) {
+          delay(3000);
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("3. a cup of milk");
+          lcd.setCursor(0, 1);
+          lcd.print("Any milk works!");
+          lcd.setCursor(0, 2);
+          lcd.print("Soy, animal, etc.");
+          while (!ButtonPressed) {
+            button();
+          }
+          if (ButtonPressed) {
+            delay(3000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("4. Honey to taste");
+            lcd.setCursor(0, 1);
+            lcd.print("Everyone needs a");
+            lcd.setCursor(0, 2);
+            lcd.print("little sweetness");
+            lcd.setCursor(0, 3);
+            lcd.print("in their life!");
+          }
+        }
+      }
+    } else if (drinkSelection == 2) {
+      lcd.print("1. a frozen banana");
+      lcd.setCursor(0, 2);
+      lcd.print("Bananas help you");
+      lcd.setCursor(0, 3);
+      lcd.print("with digestion!");
+      while (!ButtonPressed) {
+        button();
+      }
+      if (ButtonPressed) {
+        delay(3000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("2. a tbsp of peanut");
+        lcd.setCursor(0, 1);
+        lcd.print("butter.");
+        lcd.setCursor(0, 2);
+        lcd.print("Peanuts provide you");
+        lcd.setCursor(0, 3);
+        lcd.print("with good fats!");
+        while (!ButtonPressed) {
+          button();
+        }
+        if (ButtonPressed) {
+          delay(3000);
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("3. a cup of milk");
+          lcd.setCursor(0, 1);
+          lcd.print("Any milk works!");
+          lcd.setCursor(0, 2);
+          lcd.print("Soy, animal, etc.");
+          while (!ButtonPressed) {
+            button();
+          }
+          if (ButtonPressed) {
+            delay(3000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("4. Honey to taste");
+            lcd.setCursor(0, 1);
+            lcd.print("Everyone needs a");
+            lcd.setCursor(0, 2);
+            lcd.print("little sweetness");
+            lcd.setCursor(0, 3);
+            lcd.print("in their life!");
+          }
+        }
+      }
+    } else if (drinkSelection == 3) {
+      lcd.print("1. a frozen banana");
+      lcd.setCursor(0, 2);
+      lcd.print("Bananas help you");
+      lcd.setCursor(0, 3);
+      lcd.print("with digestion!");
+      while (!ButtonPressed) {
+        button();
+      }
+      if (ButtonPressed) {
+        delay(3000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("2. a cup of");
+        lcd.setCursor(0, 1);
+        lcd.print("pineapple.");
+        lcd.setCursor(0, 2);
+        lcd.print("Pineapple gives you");
+        lcd.setCursor(0, 3);
+        lcd.print("lots of vitamin C!");
+        while (!ButtonPressed) {
+          button();
+        }
+        if (ButtonPressed) {
+          delay(3000);
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("3. a cup of milk");
+          lcd.setCursor(0, 1);
+          lcd.print("Any milk works!");
+          lcd.setCursor(0, 2);
+          lcd.print("but coconut milk");
+          lcd.setCursor(0, 3);
+          lcd.print("is recommended!");
+          while (!ButtonPressed) {
+            button();
+          }
+          if (ButtonPressed) {
+            delay(3000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("4. Honey to taste");
+            lcd.setCursor(0, 1);
+            lcd.print("Everyone needs a");
+            lcd.setCursor(0, 2);
+            lcd.print("little sweetness");
+            lcd.setCursor(0, 3);
+            lcd.print("in their life!");
+          }
+        }
+      }
+    } else if (drinkSelection == 4) {
+      lcd.print("1. a frozen banana");
+      lcd.setCursor(0, 2);
+      lcd.print("Bananas help you");
+      lcd.setCursor(0, 3);
+      lcd.print("with digestion!");
+      while (!ButtonPressed) {
+        button();
+      }
+      if (ButtonPressed) {
+        delay(3000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("2. a cup of");
+        lcd.setCursor(0, 1);
+        lcd.print("strawberry.");
+        lcd.setCursor(0, 2);
+        lcd.print("Strawberries have");
+        lcd.setCursor(0, 3);
+        lcd.print("a lot of antioxidants");
+        while (!ButtonPressed) {
+          button();
+        }
+        if (ButtonPressed) {
+          delay(3000);
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("3. a cup of");
+          lcd.setCursor(0, 1);
+          lcd.print("blueberry.");
+          lcd.setCursor(0, 2);
+          lcd.print("Blueberries have");
+          lcd.setCursor(0, 3);
+          lcd.print("a lot of iron!");
+          while (!ButtonPressed) {
+            button();
+          }
+          if (ButtonPressed) {
+            delay(3000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("3. a cup of milk");
+            lcd.setCursor(0, 1);
+            lcd.print("Any milk works!");
+            lcd.setCursor(0, 2);
+            lcd.print("Soy, animal, etc.");
+            while (!ButtonPressed) {
+              button();
+            }
+            if (ButtonPressed) {
+              delay(3000);
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("4. Honey to taste");
+              lcd.setCursor(0, 1);
+              lcd.print("Everyone needs a");
+              lcd.setCursor(0, 2);
+              lcd.print("little sweetness");
+              lcd.setCursor(0, 3);
+              lcd.print("in their life!");
+            }
+          }
+        }
+      }
+
+    }
+  }
+}
+void menuButton() {
+  //add code that checks if main menu button is pressed
+  mainMenu();
+}
+
+void mainMenu() {
+  //add code
+}
+
+void lightingControl() {
+  
+}
 void setupTime() {
   lcd.clear();
   lcd.setCursor(2, 0);
@@ -381,7 +667,6 @@ void setupTime() {
   timeNum = 0;
   setTime(hour1, min1, 30, day1, month1, year1);
 }
-
 void setupMonth() {
   month1 = 0;
   timeNum = 1;
@@ -407,7 +692,6 @@ void setupMonth() {
   Serial.println("Month Set: " + month1);
   delay(1500);
 }
-
 void setupDay() {
   day1 = 0;
   timeNum = 1;
@@ -433,7 +717,6 @@ void setupDay() {
   Serial.println("Day Set: " + day1);
   delay(1500);
 }
-
 void setupYear() {
   year1 = 0;
   timeNum = 2021;
@@ -459,7 +742,6 @@ void setupYear() {
   Serial.println("Year Set: " + year1);
   delay(1500);
 }
-
 void setupHour() {
   hour1 = 0;
   timeNum = 1;
@@ -485,7 +767,6 @@ void setupHour() {
   Serial.println("Hour Set: " + year1);
   delay(1500);
 }
-
 void setupMin() {
   min1 = 0;
   timeNum = 0;
@@ -511,100 +792,6 @@ void setupMin() {
   Serial.println("Min Set: " + year1);
   delay(1500);
 }
-
-void breathingExercise() {
-
-}
-void detoxDrink() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("1. Classic Green");
-  lcd.setCursor(0, 1);
-  lcd.print("2. Choccy Peanut");
-  lcd.setCursor(0, 2);
-  lcd.print("3. Pina Colada");
-  lcd.setCursor(0, 3);
-  lcd.print("4. Very Berries");
-  while (!ButtonPressed) {
-    button();
-    lcd.setCursor(18, 3);
-    if (encoderPos >= 5) {
-      encoderPos = 4;
-    } else if (encoderPos == 255) {
-      encoderPos = 0;
-    }
-    lcd.print(encoderPos);
-  }
-  if (ButtonPressed) {
-    int drinkSelection = encoderPos;
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("For your drink");
-    lcd.setCursor(0, 1);
-    lcd.print("simply add all");
-    lcd.setCursor(0, 2);
-    lcd.print("ingredients in a");
-    lcd.setCursor(0, 3);
-    lcd.print("and blend them, yum!");
-    delay(5000);
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("You will need:");
-    lcd.setCursor(0, 1);
-    if (drinkSelection == 1) {
-      lcd.print("1. a frozen banana");
-      lcd.setCursor(0, 2);
-      lcd.print("Bananas help you");
-      lcd.setCursor(0, 3);
-      lcd.print("with digestion!");
-      while (!ButtonPressed) {
-        button();
-      }
-      if (ButtonPressed) {
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("2. a cup of spinach");
-        lcd.setCursor(0, 1);
-        lcd.print("Spinach benefits");
-        lcd.setCursor(0, 2);
-        lcd.print("your eye health!");
-        while (!ButtonPressed) {
-          button();
-        }
-        if (ButtonPressed) {
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("3. a cup of milk");
-          lcd.setCursor(0, 1);
-          lcd.print("Any milk works!");
-          lcd.setCursor(0, 2);
-          lcd.print("Soy, animal, etc.");
-          while (!ButtonPressed) {
-            button();
-          }
-          if (ButtonPressed) {
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("4. Honey to taste");
-            lcd.setCursor(0, 1);
-            lcd.print("Everyone needs a");
-            lcd.setCursor(0, 2);
-            lcd.print("little sweetness");
-            lcd.setCursor(0, 3);
-            lcd.print("in their life!");
-          }
-        }
-
-      }
-    } else if (drinkSelection == 2) {
-
-    } else if (drinkSelection == 3) {
-
-    } else if (drinkSelection == 4) {
-
-    }
-  }
-}
 void displayTempTime() {
   //Sensor takes a bit to read sometimes, best to delay at 2
   delay(5000);
@@ -618,23 +805,23 @@ void displayTempTime() {
   Serial.print(f);
   if (!(isnan(c))) {
     pc = c;
-  } 
+  }
   if (!(isnan(f))) {
     pf = f;
   }
-  String d = (String)month()+"/"+(String)day()+"/"+(String)year();
+  String d = (String)month() + "/" + (String)day() + "/" + (String)year();
   //Time
-  String t = (String)hour()+":"+(String)minute(); //add +":"+(String)second() for seconds
+  String t = (String)hour() + ":" + (String)minute(); //add +":"+(String)second() for seconds
 
   lcd.createChar(0, degree);
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print("Date = ");
   lcd.print(d);
-  lcd.setCursor(0,1);
+  lcd.setCursor(0, 1);
   lcd.print("Time = ");
   lcd.print(t);
-  lcd.setCursor(0,2);
+  lcd.setCursor(0, 2);
   lcd.print("Temp = ");
   lcd.print((int)pf);
   lcd.write((byte)0);
@@ -642,42 +829,55 @@ void displayTempTime() {
   lcd.print((int)pc);
   lcd.write((byte)0);
   lcd.print("C");
-  lcd.setCursor(0,3);
+  lcd.setCursor(0, 3);
   lcd.print("Humidity = ");
-  lcd.print((int)h*0.1);
+  lcd.print((int)h * 0.1);
   lcd.print("%");
 }
-
-void menuButton() {
-  //add code that checks if main menu button is pressed
-  mainMenu();
-}
-
-void mainMenu() {
-  //add code
-}
-
-void lightingControl() {
-  //add code
+firstTime(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("|");
+  lcd.setCursor(1, 0);
+  lcd.print("Welcome to...");
+  lcd.setCursor(19, 0);
+  lcd.print("|");
+  lcd.setCursor(0, 1);
+  lcd.print("|");
+  lcd.setCursor(1, 1);
+  lcd.print("AuroraBot!!!");
+  lcd.setCursor(19, 1);
+  lcd.print("|");
+  delay(5000);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Initializing");
+  lcd.setCursor(0, 1);
+  lcd.print("your very own");
+  lcd.setCursor(0, 2);
+  lcd.print("AuroraBot......");
+  delay(3000);
+  setupTime();
 }
 void loop() {
-//  if (menu == 1) {
-//    //Time Setup
-//    setupTime();
-//    menu++;
-//  } else if (menu == 2) {
-//    displayTempTime();
-//  } else if (menu == 3) {
-//    
-//  } else if (menu == 4) {
-//    
-//  } else if (menu == 5) {
-//    
-//  }
-//  daysActive++;
-//  if (i == 1) {
-//    setupTime();
-//    i = 2;
-//  }
-  displayTempTime();
+  firstTime();
+  /*
+    if (menu == 1) {
+     //Time Setup
+     setupTime();
+     menu++;
+    } else if (menu == 2) {
+     displayTempTime();
+    } else if (menu == 3) {
+
+    } else if (menu == 4) {
+
+    } else if (menu == 5) {
+
+    }*/
+  daysActive++;
+  if (i == 1) {
+    morningCheckIn();
+    i = 2;
+  }
 }
