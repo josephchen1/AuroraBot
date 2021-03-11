@@ -43,14 +43,14 @@ void setup() {
 
 void loop() {
   // Fill along the length of the strip in various colors...
-  colorWipe(strip.Color(255,   0,   0)     , 50); // Red
-  colorWipe(strip.Color(  0, 255,   0)     , 50); // Green
-  colorWipe(strip.Color(  0,   0, 255)     , 50); // Blue
-  colorWipe(strip.Color(  0,   0,   0, 255), 50); // True white (not RGB white)
+//  colorWipe(strip.Color(255,   0,   0)     , 50); // Red
+//  colorWipe(strip.Color(  0, 255,   0)     , 50); // Green
+//  colorWipe(strip.Color(  0,   0, 255)     , 50); // Blue
+//  colorWipe(strip.Color(  0,   0,   0, 255), 50); // True white (not RGB white)
 
-  whiteOverRainbow(75, 5);
+//  whiteOverRainbow(75, 5);
 
-  pulseWhite(5);
+//  pulseWhite(5);
 
   rainbowFade2White(3, 3, 1);
 }
