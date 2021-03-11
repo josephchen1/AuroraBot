@@ -605,12 +605,53 @@ void detoxDrink() {
   }
 }
 void menuButton() {
-  //add code that checks if main menu button is pressed
-  mainMenu();
+  //if button is pressed, call mainMenu()
 }
 
 void mainMenu() {
-  //add code
+  int select = 0;
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Menu Selection");
+  lcd.setCursor(0,1);
+  lcd.print("1. Time");
+  lcd.setCursor(0,2);
+  lcd.print("2. Lights");
+  lcd.setCursor(0,3);
+  lcd.print("3. Reminders");
+  lcd.setCursor(10,1);
+  lcd.print("4. Stats");
+  lcd.setCursor(10,2);
+  lcd.print("5. Name");
+
+  while (!ButtonPressed) {
+    button();
+    lcd.cursor();
+    if (encoderPos == 1) {
+      lcd.setCursor(0,1);
+      select = 1;
+    } else if (encoderPos == 2) {
+      lcd.setCursor(0,2);
+      select = 2;
+    } else if (encoderPos == 3) {
+      lcd.setCursor(0,3);
+      select = 3;
+    } else if (encoderPos == 4) {
+      lcd.setCursor(10,1);
+      select = 4;
+    } else if (encoderPos == 5) {
+      lcd.setCursor(10,2);
+      select = 5;
+    } else if (encoderPos >= 6) {
+      encoderPos = 5;
+    } else if (encoderPos == 255) {
+      encoderPos = 1;
+    }
+  }
+  if (ButtonPressed) {
+    lcd.noCursor();
+    menu = select;
+  }
 }
 
 void lightingControl() {
@@ -1049,11 +1090,8 @@ void loop() {
     } else if (menu == 2) {
      displayTempTime();
     } else if (menu == 3) {
-
     } else if (menu == 4) {
-
     } else if (menu == 5) {
-
     }*/
   daysActive++;
   if (i == 1) {
