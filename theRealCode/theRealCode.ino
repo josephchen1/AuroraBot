@@ -650,6 +650,7 @@ void mainMenu() {
   }
   if (ButtonPressed) {
     lcd.noCursor();
+    buttonPressed = false;
     menu = select;
   }
 }
