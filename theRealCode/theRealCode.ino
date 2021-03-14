@@ -15,14 +15,14 @@ static int LED = 11;
 static int MENUBTN = 6;
 
 byte degree[8] = {
-  B00110,
-  B01001,
-  B01001,
-  B00110,
-  B00000,
-  B00000,
-  B00000,
-  B00000,
+    B00110,
+    B01001,
+    B01001,
+    B00110,
+    B00000,
+    B00000,
+    B00000,
+    B00000,
 };
 
 volatile byte aFlag = 0;
@@ -33,13 +33,12 @@ volatile byte reading = 0;
 
 int i = 1;
 int counter = 0;
-int currentStateCLK;
-int lastStateCLK;
-String currentDir = "";
 unsigned long lastButtonPress = 0;
-float TimeNow2;
 float TimeNow1;
 boolean ButtonPressed = false;
+
+unsigned long lastButtonPressM = 0;
+boolean ButtonPressedM = false;
 
 int timeNum = 1;
 int month1;
@@ -48,22 +47,35 @@ int year1;
 int hour1;
 int min1;
 
-int daysActive = 0;
-int avgSleepTime = 0;
+int daysActive = 1;
+double avgSleepTime = 0;
 int totalSleepTime = 0;
 int goalSleepTime = 8;
-int avgMidday = 0;
+
+double avgMidday = 0;
 int totalMidday = 0;
 int goalMidday = 8;
 
+double avgNight = 0;
+int totalNight = 0;
+int goalNight = 7;
+
+int morningCheckInTime = 0;
+int middayCheckInTime = 0;
+int nightCheckInTime = 0;
+
+boolean menuOn = false;
+boolean justRestarted = true;
+
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 DHT dht(DHTPIN, DHTTYPE);
-Adafruit_NeoPixel strip = Adafruit_NeoPixel
-                          (28, LED, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(28, LED, NEO_GRB + NEO_KHZ800);
 
 Vector<int> sleepData;
 Vector<int> middayData;
-void setup() {
+Vector<int> nightData;
+void setup()
+{
   //Don't change anything below
   pinMode(pinA, INPUT_PULLUP);
   pinMode(pinB, INPUT_PULLUP);
@@ -72,7 +84,6 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(3), PinB, FALLING);
   attachInterrupt(digitalPinToInterrupt(4), button, FALLING);
   Serial.begin(9600);
-  lastStateCLK = digitalRead(CLK);
   TimeNow1 = millis();
   lcd.init();
   lcd.backlight();
@@ -80,46 +91,83 @@ void setup() {
   strip.begin();
   strip.setBrightness(85);
   strip.show();
+  randomSeed(analogRead(10));
 }
-void button() {
+void button()
+{
   int btnState = digitalRead(CLK);
 
   //If we detect LOW signal, button is pressed
-  if (btnState == LOW) {
-    if (millis() - lastButtonPress > 50) {
+  if (btnState == LOW)
+  {
+    if (millis() - lastButtonPress > 50)
+    {
       ButtonPressed = true;
-      Serial.print("Button Pressed");
     }
     lastButtonPress = millis();
-  } else {
+  }
+  else
+  {
     ButtonPressed = false;
   }
   delay(1);
-
 }
-void PinA() {
+void menuButton()
+{
+  int btnStateM = digitalRead(MENUBTN);
+
+  //If we detect LOW signal, button is pressed
+  if (btnStateM == LOW)
+  {
+    if (millis() - lastButtonPressM > 50)
+    {
+      ButtonPressedM = true;
+//      menuOn = !menuOn;
+      Serial.print("hi");
+    }
+    lastButtonPressM = millis();
+  }
+  else
+  {
+    ButtonPressedM = false;
+  }
+  delay(1);
+//  if(menuOn){
+//    mainMenu();
+//  }else if(!menuOn){
+//    return;
+//  }
+}
+void PinA()
+{
   reading = PIND & 0xC;
-  if (reading == B00001100 && aFlag) {
-    encoderPos --;
+  if (reading == B00001100 && aFlag)
+  {
+    encoderPos--;
     bFlag = 0;
     aFlag = 0;
   }
-  else if (reading == B00000100) {
+  else if (reading == B00000100)
+  {
     bFlag = 1;
   }
 }
-void PinB() {
+void PinB()
+{
   reading = PIND & 0xC;
-  if (reading == B00001100 && bFlag) {
-    encoderPos ++;
+  if (reading == B00001100 && bFlag)
+  {
+    encoderPos++;
     bFlag = 0;
     aFlag = 0;
   }
-  else if (reading == B00001000) {
+  else if (reading == B00001000)
+  {
     aFlag = 1;
   }
 }
-void morningCheckIn() {
+void morningCheckIn()
+{
   button();
   lcd.print("How many hours");
   lcd.setCursor(0, 1);
@@ -127,17 +175,22 @@ void morningCheckIn() {
   lcd.setCursor(0, 2);
   lcd.print("last night?");
   lcd.setCursor(0, 3);
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
     lcd.setCursor(18, 3);
-    if (encoderPos == 25) {
+    if (encoderPos == 25)
+    {
       encoderPos = 24;
-    } else if (encoderPos == 255) {
+    }
+    else if (encoderPos == 255)
+    {
       encoderPos = 0;
     }
     lcd.print(encoderPos);
   }
-  if (ButtonPressed) {
+  if (ButtonPressed)
+  {
     int sleepTime = encoderPos;
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -149,7 +202,8 @@ void morningCheckIn() {
     delay(3000);
     sleepData.PushBack(sleepTime);
     totalSleepTime += sleepTime;
-    avgSleepTime = totalSleepTime / daysActive;
+    avgSleepTime = (totalSleepTime / daysActive);
+    avgSleepTime = (int) avgSleepTime;
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("You average sleep");
@@ -161,7 +215,8 @@ void morningCheckIn() {
     lcd.print("hours");
     delay(3000);
     lcd.clear();
-    if (avgSleepTime < goalSleepTime) {
+    if (sleepTime < goalSleepTime)
+    {
       lcd.setCursor(0, 0);
       lcd.print("Oh no! Why did you");
       lcd.setCursor(0, 1);
@@ -172,22 +227,28 @@ void morningCheckIn() {
       lcd.print("2. Caffeine");
       lcd.setCursor(18, 3);
       button();
-      while (!ButtonPressed) {
+      while (!ButtonPressed)
+      {
         button();
         lcd.setCursor(18, 3);
-        if (encoderPos >= 3) {
+        if (encoderPos >= 3)
+        {
           encoderPos = 2;
-        } else if (encoderPos == 0) {
+        }
+        else if (encoderPos == 0)
+        {
           encoderPos = 1;
         }
         lcd.print(encoderPos);
       }
-      if (ButtonPressed) {
+      if (ButtonPressed)
+      {
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("You said that");
         lcd.setCursor(0, 1);
-        if (encoderPos == 1) {
+        if (encoderPos == 1)
+        {
           lcd.print("stress is why you");
           lcd.setCursor(0, 2);
           lcd.print("didn't sleep so well");
@@ -200,38 +261,48 @@ void morningCheckIn() {
           lcd.setCursor(0, 2);
           lcd.print("to help with that?");
           button();
-          while (!ButtonPressed) {
+          while (!ButtonPressed)
+          {
             button();
             lcd.setCursor(10, 3);
-            if (encoderPos == 3) {
+            if (encoderPos == 3)
+            {
               encoderPos = 2;
-            } else if (encoderPos == 255) {
+            }
+            else if (encoderPos == 255)
+            {
               encoderPos = 1;
             }
-            if (encoderPos == 1) {
+            if (encoderPos == 1)
+            {
               lcd.print("Yes");
-            } else {
+            }
+            else
+            {
               lcd.print("Nah");
             }
-            if (ButtonPressed) {
-              if (encoderPos == 1) {
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("Great!");
-                lcd.setCursor(0, 1);
-                lcd.print("Let's destress!");
-                lcd.setCursor(0, 2);
-                lcd.print("Entering breathing");
-                lcd.setCursor(0, 3);
-                lcd.print("exercise...");
-                delay(3000);
-                lcd.clear();
-                breathingExercise();
-              }
+          }
+          if (ButtonPressed)
+          {
+            if (encoderPos == 1)
+            {
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("Great!");
+              lcd.setCursor(0, 1);
+              lcd.print("Let's destress!");
+              lcd.setCursor(0, 2);
+              lcd.print("Entering breathing");
+              lcd.setCursor(0, 3);
+              lcd.print("exercise...");
+              delay(3000);
+              lcd.clear();
+              breathingExercise();
             }
           }
         }
-        if (encoderPos == 2) {
+        if (encoderPos == 2)
+        {
           lcd.print("caffeine is why you");
           lcd.setCursor(0, 2);
           lcd.print("didn't sleep so well");
@@ -244,34 +315,55 @@ void morningCheckIn() {
           lcd.setCursor(0, 2);
           lcd.print("coffee to help?");
           button();
-          while (!ButtonPressed) {
+          while (!ButtonPressed)
+          {
             button();
             lcd.setCursor(10, 3);
-            if (encoderPos == 3) {
+            if (encoderPos == 3)
+            {
               encoderPos = 2;
-            } else if (encoderPos == 255) {
+            }
+            else if (encoderPos == 255)
+            {
               encoderPos = 1;
             }
-            if (encoderPos == 1) {
+            if (encoderPos == 1)
+            {
               lcd.print("Yes");
-            } else {
+            }
+            else
+            {
               lcd.print("Nah");
             }
-            if (ButtonPressed) {
-              if (encoderPos == 1) {
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("Great!");
-                lcd.setCursor(0, 1);
-                lcd.print("Let's detox!");
-                lcd.setCursor(0, 2);
-                lcd.print("Entering detox");
-                lcd.setCursor(0, 3);
-                lcd.print("drinks menu page...");
-                delay(3000);
-                lcd.clear();
-                detoxDrink();
-              }
+          }
+          if (ButtonPressed)
+          {
+            if (encoderPos == 1)
+            {
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("Great!");
+              lcd.setCursor(0, 1);
+              lcd.print("Let's detox!");
+              lcd.setCursor(0, 2);
+              lcd.print("Entering detox");
+              lcd.setCursor(0, 3);
+              lcd.print("drinks menu page...");
+              delay(3000);
+              lcd.clear();
+              detoxDrink();
+            }else if(encoderPos==2){
+              lcd.clear();
+              lcd.setCursor(0, 0);
+              lcd.print("Don't worry!");
+              lcd.setCursor(0, 1);
+              lcd.print("It is completely");
+              lcd.setCursor(0, 2);
+              lcd.print("understandable.");
+              lcd.setCursor(0, 3);
+              lcd.print("Have a good day!");
+              delay(3000);
+              lcd.clear();
             }
           }
         }
@@ -279,76 +371,524 @@ void morningCheckIn() {
     }
   }
 }
-void middayCheckIn() {
+void middayCheckIn()
+{
   button();
   lcd.print("How was your");
   lcd.setCursor(0, 1);
   lcd.print("morning on a scale");
   lcd.setCursor(0, 2);
   lcd.print("of 1 to 10?");
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
     lcd.setCursor(10, 3);
-    if (encoderPos >= 11) {
+    if (encoderPos >= 11)
+    {
       encoderPos = 10;
-    } else if (encoderPos == 255) {
-      encoderPos = 0;
+    }
+    else if (encoderPos == 255)
+    {
+      encoderPos = 1;
     }
     lcd.print(encoderPos);
   }
-  if (ButtonPressed) {
-    int middayRating = encoderPos;
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("You gave your morning");
-    lcd.setCursor(0, 1);
-    lcd.print(encoderPos);
-    lcd.setCursor(3, 1);
-    lcd.print("out of 10");
-    delay(3000);
-    middayData.PushBack(middayRating);
-    totalMidday += middayRating;
-    avgMidday = totalMidday / daysActive;
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("You average midday");
-    lcd.setCursor(0, 1);
-    lcd.print("rating is ");
-    lcd.setCursor(8, 1);
-    lcd.print(avgMidday);
-    lcd.setCursor(10, 1);
-    lcd.print("hours");
-    delay(3000);
-    lcd.clear();
-    if (avgMidday < goalMidday) {
+    if (ButtonPressed)
+    {
+      button();
+      int middayRating = encoderPos;
+      lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print(":( Sorry to hear that");
+      lcd.print("You gave the morning");
       lcd.setCursor(0, 1);
-      lcd.print("Why was it not good?");
+      lcd.print(encoderPos);
+      lcd.setCursor(3, 1);
+      lcd.print("out of 10");
       delay(3000);
-      //TODO
+      middayData.PushBack(middayRating);
+      totalMidday += middayRating;
+      avgMidday = (totalMidday / daysActive);
+      avgMidday = (int) avgMidday;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("You average midday");
+      lcd.setCursor(0, 1);
+      lcd.print("rating is ");
+      lcd.setCursor(8, 1);
+      lcd.print(avgMidday);
+      lcd.setCursor(10, 1);
+      lcd.print("hours");
+      delay(3000);
+      lcd.clear();
+      if (avgMidday < goalMidday)
+      {
+        lcd.setCursor(0, 0);
+        lcd.print(":( Sorry about that");
+        lcd.setCursor(0, 1);
+        lcd.print("Why was your");
+        lcd.setCursor(0, 2);
+        lcd.print("morning not good?");
+        delay(3000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("1. Tired");
+        lcd.setCursor(0, 1);
+        lcd.print("2. Unmotivated");
+        lcd.setCursor(0, 2);
+        lcd.print("3. It was alright");
+        lcd.setCursor(0, 3);
+        lcd.print("I needed a break");
+        button();
+        while (!ButtonPressed)
+        {
+          button();
+          lcd.setCursor(18, 3);
+          if (encoderPos >= 4)
+          {
+            encoderPos = 3;
+          }
+          else if (encoderPos == 255)
+          {
+            encoderPos = 1;
+          }
+          lcd.print(encoderPos);
+        }
+        if (ButtonPressed)
+        {
+          lcd.clear();
+          if (encoderPos == 1)
+          {
+            lcd.setCursor(0, 0);
+            lcd.print("Aww T_T");
+            lcd.setCursor(0, 1);
+            lcd.print("Poor little thing,");
+            lcd.setCursor(0, 2);
+            lcd.print("you know what,");
+            lcd.setCursor(0, 3);
+            lcd.print("you should sleep!");
+            delay(5000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Let me set the");
+            lcd.setCursor(0, 1);
+            lcd.print("light to relax mode");
+            lcd.setCursor(0, 2);
+            lcd.print("Can I trust you");
+            lcd.setCursor(0, 3);
+            lcd.print("that you will sleep?");
+            delay(3000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("[AuroraBot watches");
+            lcd.setCursor(0,1);
+            lcd.print("you silently]");
+            button();
+            while (!ButtonPressed)
+            {
+              button();
+              lcd.setCursor(10, 2);
+              if (encoderPos == 3)
+              {
+                encoderPos = 2;
+              }
+              else if (encoderPos == 255)
+              {
+                encoderPos = 1;
+              }
+              if (encoderPos == 1)
+              {
+                lcd.print("Yes");
+              }
+              else
+              {
+                lcd.print("Meh");
+              }
+            }
+            if(ButtonPressed){
+              lcd.clear();
+              if(encoderPos==1){
+                lcd.setCursor(0,0);
+                lcd.print("Yay! Taking a nap");
+                lcd.setCursor(0,1);
+                lcd.print("is the best thing");
+                lcd.setCursor(0,2);
+                lcd.print("in the world!");
+                lcd.setCursor(0,3);
+                lcd.print("Good night!");
+                LED_Breathe();
+              }else if(encoderPos==2){
+                lcd.setCursor(0,0);
+                lcd.print("You should try");
+                lcd.setCursor(0,1);
+                lcd.print("napping sometime");
+                lcd.setCursor(0,2);
+                lcd.print("but if it's not now");
+                lcd.setCursor(0,3);
+                lcd.print("that's alright too!");
+              }
+            }
+          }
+          else if (encoderPos == 2)
+          {
+            lcd.setCursor(0,0);
+            lcd.print("Here is an");
+            lcd.setCursor(0,1);
+            lcd.print("inspirational");
+            lcd.setCursor(0,2);
+            lcd.print("quote, to cheer");
+            lcd.setCursor(0,3);
+            lcd.print("you up!");
+            delay(5000);
+            lcd.clear();
+            lcd.setCursor(0,0);
+            int randomQuote = random(1,5+1);
+            if(randomQuote==1){
+              lcd.print("All our dreams can");
+              lcd.setCursor(0,1);
+              lcd.print("come true, if we");
+              lcd.setCursor(0,2);
+              lcd.print("have the courage to");
+              lcd.setCursor(0,3);
+              lcd.print("pursue them! OwO");
+            }else if(randomQuote==2){
+              lcd.print("The secret of");
+              lcd.setCursor(0,1);
+              lcd.print("getting ahead is");
+              lcd.setCursor(0,2);
+              lcd.print("getting started");
+              lcd.setCursor(10,3);
+              lcd.print("@w@");
+            }else if(randomQuote==3){
+              lcd.print("The best time to");
+              lcd.setCursor(0,1);
+              lcd.print("plant a tree was 20");
+              lcd.setCursor(0,2);
+              lcd.print("years ago. The 2nd");
+              lcd.setCursor(0,3);
+              lcd.print("best time is now! :)");
+            }else if(randomQuote==4){
+              lcd.print("It’s hard to beat");
+              lcd.setCursor(0,1);
+              lcd.print("a person who");
+              lcd.setCursor(0,2);
+              lcd.print("never gives up");
+              lcd.setCursor(10,3);
+              lcd.print("QwQ");
+            }else if(randomQuote==5){
+              lcd.print("If we have the");
+              lcd.setCursor(0,1);
+              lcd.print("attitude that it's");
+              lcd.setCursor(0,2);
+              lcd.print("going to be a great");
+              lcd.setCursor(0,3);
+              lcd.print("day it usually is ;)");
+            }
+          }
+          else if (encoderPos == 3)
+          {
+            lcd.setCursor(0,0);
+            lcd.print("No problem! Taking");
+            lcd.setCursor(0,1);
+            lcd.print("a break is awesome!");
+            lcd.setCursor(0,2);
+            lcd.print("Have fun with the");
+            lcd.setCursor(0,3);
+            lcd.print("rest of your day!");
+          }
+          delay(5000);
+          lcd.clear();
+        }
+      }else{
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Yay! AuroraBot is");
+        lcd.setCursor(0,1);
+        lcd.print("proud of you!");
+        lcd.setCursor(0,2);
+        lcd.print("Keep up the good");
+        lcd.setCursor(0,3);
+        lcd.print("work!");
+        delay(5000);
+        lcd.clear();
+      }
+    }
+}
+void nightCheckIn()
+{
+  button();
+  lcd.print("How was your");
+  lcd.setCursor(0, 1);
+  lcd.print("afternoon on a scale");
+  lcd.setCursor(0, 2);
+  lcd.print("of 1 to 10?");
+  while (!ButtonPressed)
+  {
+    button();
+    lcd.setCursor(10, 3);
+    if (encoderPos >= 11)
+    {
+      encoderPos = 10;
+    }
+    else if (encoderPos == 255)
+    {
+      encoderPos = 1;
+    }
+    lcd.print(encoderPos);
+  }
+    if (ButtonPressed)
+    {
+      button();
+      int nightRating = encoderPos;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("You gave the");
+      lcd.setCursor(0, 1);
+      lcd.print("afternoon a");
+      lcd.setCursor(0,2);
+      lcd.print(encoderPos);
+      lcd.setCursor(3,2);
+      lcd.print("out of 10");
+      delay(3000);
+      nightData.PushBack(nightRating);
+      totalNight += nightRating;
+      avgNight = (totalNight / daysActive);
+      avgNight = (int) avgNight;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Your average");
+      lcd.setCursor(0, 1);
+      lcd.print("afternoon rating is");
+      lcd.setCursor(0, 2);
+      lcd.print(avgNight);
+      lcd.setCursor(2, 2);
+      lcd.print("out of 10");
+      delay(3000);
+      lcd.clear();
+      if (avgMidday < goalMidday)
+      {
+        lcd.setCursor(0, 0);
+        lcd.print(":( Sorry about that");
+        lcd.setCursor(0, 1);
+        lcd.print("Why was your");
+        lcd.setCursor(0, 2);
+        lcd.print("afternoon not good?");
+        delay(3000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("1. Tired");
+        lcd.setCursor(0, 1);
+        lcd.print("2. Unmotivated");
+        lcd.setCursor(0, 2);
+        lcd.print("3. I took a break");
+        button();
+        while (!ButtonPressed)
+        {
+          button();
+          lcd.setCursor(18, 3);
+          if (encoderPos >= 4)
+          {
+            encoderPos = 3;
+          }
+          else if (encoderPos == 255)
+          {
+            encoderPos = 1;
+          }
+          lcd.print(encoderPos);
+        }
+        if (ButtonPressed)
+        {
+          lcd.clear();
+          if (encoderPos == 1)
+          {
+            lcd.setCursor(0, 0);
+            lcd.print("Well, it is the");
+            lcd.setCursor(0, 1);
+            lcd.print("evening right now.");
+            lcd.setCursor(0, 2);
+            lcd.print("You just need a");
+            lcd.setCursor(0, 3);
+            lcd.print("little final push!");
+            delay(5000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Let me set the");
+            lcd.setCursor(0, 1);
+            lcd.print("light to rainbow.");
+            lcd.setCursor(0, 2);
+            lcd.print("Will you try your");
+            lcd.setCursor(0, 3);
+            lcd.print("best to work?");
+            delay(3000);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("[AuroraBot watches");
+            lcd.setCursor(0,1);
+            lcd.print("you with");
+            lcd.setCursor(0,2);
+            lcd.print("determination]");
+            button();
+            while (!ButtonPressed)
+            {
+              button();
+              lcd.setCursor(2, 3);
+              if (encoderPos == 3)
+              {
+                encoderPos = 2;
+              }
+              else if (encoderPos == 255)
+              {
+                encoderPos = 1;
+              }
+              if (encoderPos == 1)
+              {
+                lcd.print("Ohh yes!!");
+              }
+              else
+              {
+                lcd.print("Not really");
+              }
+            }
+            if(ButtonPressed){
+              lcd.clear();
+              if(encoderPos==1){
+                lcd.setCursor(0,0);
+                lcd.print("Yay! You are so");
+                lcd.setCursor(0,1);
+                lcd.print("close to the");
+                lcd.setCursor(0,2);
+                lcd.print("finish line!");
+                lcd.setCursor(0,3);
+                lcd.print("Good luck!");
+                LED_Breathe();
+              }else if(encoderPos==2){
+                lcd.setCursor(0,0);
+                lcd.print("Of course!");
+                lcd.setCursor(0,1);
+                lcd.print("You've worked so");
+                lcd.setCursor(0,2);
+                lcd.print("hard today already.");
+                lcd.setCursor(0,3);
+                lcd.print("That's alright too!");
+              }
+            }
+          }
+          else if (encoderPos == 2)
+          {
+            lcd.setCursor(0,0);
+            lcd.print("Here is an");
+            lcd.setCursor(0,1);
+            lcd.print("inspirational");
+            lcd.setCursor(0,2);
+            lcd.print("quote, to cheer");
+            lcd.setCursor(0,3);
+            lcd.print("you up!");
+            delay(5000);
+            lcd.clear();
+            lcd.setCursor(0,0);
+            int randomQuote = random(1,5+1);
+            if(randomQuote==1){
+              lcd.print("All our dreams can");
+              lcd.setCursor(0,1);
+              lcd.print("come true, if we");
+              lcd.setCursor(0,2);
+              lcd.print("have the courage to");
+              lcd.setCursor(0,3);
+              lcd.print("pursue them! OwO");
+            }else if(randomQuote==2){
+              lcd.print("The secret of");
+              lcd.setCursor(0,1);
+              lcd.print("getting ahead is");
+              lcd.setCursor(0,2);
+              lcd.print("getting started");
+              lcd.setCursor(10,3);
+              lcd.print("@w@");
+            }else if(randomQuote==3){
+              lcd.print("The best time to");
+              lcd.setCursor(0,1);
+              lcd.print("plant a tree was 20");
+              lcd.setCursor(0,2);
+              lcd.print("years ago. The 2nd");
+              lcd.setCursor(0,3);
+              lcd.print("best time is now! :)");
+            }else if(randomQuote==4){
+              lcd.print("It’s hard to beat");
+              lcd.setCursor(0,1);
+              lcd.print("a person who");
+              lcd.setCursor(0,2);
+              lcd.print("never gives up");
+              lcd.setCursor(10,3);
+              lcd.print("QwQ");
+            }else if(randomQuote==5){
+              lcd.print("If we have the");
+              lcd.setCursor(0,1);
+              lcd.print("attitude that it's");
+              lcd.setCursor(0,2);
+              lcd.print("going to be a great");
+              lcd.setCursor(0,3);
+              lcd.print("day it usually is ;)");
+            }
+          }
+          else if (encoderPos == 3)
+          {
+            lcd.setCursor(0,0);
+            lcd.print("No problem! Taking");
+            lcd.setCursor(0,1);
+            lcd.print("a break is awesome!");
+            lcd.setCursor(0,2);
+            lcd.print("Have fun with the");
+            lcd.setCursor(0,3);
+            lcd.print("rest of your night!");
+          }
+          delay(5000);
+          lcd.clear();
+        }
+      }else{
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Yay! AuroraBot is");
+        lcd.setCursor(0,1);
+        lcd.print("proud of you!");
+        lcd.setCursor(0,2);
+        lcd.print("Keep up the good");
+        lcd.setCursor(0,3);
+        lcd.print("work!");
+        delay(5000);
+        lcd.clear();
+      }
+    }
+}
+void breathingExercise()
+{
+  for(int loops=1;i<=10;i++){
+    int TOTAL_LEDS = 28;
+    float MaximumBrightness = 255;
+    float SpeedFactor = 0.005;
+    float StepDelay = 5;
+
+    // Make the lights breathe
+    for (int i = 0; i < 65535; i++)
+    {
+      float intensity = MaximumBrightness / 2.0 * (1.0 + sin(SpeedFactor * i));
+      strip.setBrightness(intensity);
+      for (int ledNumber = 0; ledNumber < TOTAL_LEDS; ledNumber++)
+      {
+        strip.setPixelColor(ledNumber, 0, 0, 255);
+      }
+
+      strip.show();
+      delay(StepDelay);
     }
   }
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Yay! Hope you feel");
+  lcd.setCursor(0,1);
+  lcd.print("better now!");
+  delay(3000);
+  lcd.clear();
 }
-void breathingExercise() {
-  int TOTAL_LEDS = 28;
-  float MaximumBrightness = 255;
-  float SpeedFactor = 0.005;
-  float StepDelay = 5;
-
-  // Make the lights breathe
-  for (int i = 0; i < 65535; i++) {
-    float intensity = MaximumBrightness / 2.0 * (1.0 + sin(SpeedFactor * i));
-    strip.setBrightness(intensity);
-    for (int ledNumber = 0; ledNumber < TOTAL_LEDS; ledNumber++) {
-      strip.setPixelColor(ledNumber, 0, 0, 255);
-    }
-
-    strip.show();
-    delay(StepDelay);
-  }
-}
-void detoxDrink() {
+void detoxDrink()
+{
   button();
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -359,17 +899,22 @@ void detoxDrink() {
   lcd.print("3. Pina Colada");
   lcd.setCursor(0, 3);
   lcd.print("4. Very Berries");
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
     lcd.setCursor(18, 3);
-    if (encoderPos >= 5) {
+    if (encoderPos >= 5)
+    {
       encoderPos = 4;
-    } else if (encoderPos == 255) {
+    }
+    else if (encoderPos == 255)
+    {
       encoderPos = 1;
     }
     lcd.print(encoderPos);
   }
-  if (ButtonPressed) {
+  if (ButtonPressed)
+  {
     int drinkSelection = encoderPos;
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -388,17 +933,20 @@ void detoxDrink() {
     lcd.print("these ingredients!");
     delay(3000);
     lcd.clear();
-    if (drinkSelection == 1) {
+    if (drinkSelection == 1)
+    {
       lcd.setCursor(0, 0);
       lcd.print("1. a frozen banana");
       lcd.setCursor(0, 1);
       lcd.print("Bananas help you");
       lcd.setCursor(0, 2);
       lcd.print("with digestion!");
-      while (!ButtonPressed) {
+      while (!ButtonPressed)
+      {
         button();
       }
-      if (ButtonPressed) {
+      if (ButtonPressed)
+      {
         delay(3000);
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -407,10 +955,12 @@ void detoxDrink() {
         lcd.print("Spinach benefits");
         lcd.setCursor(0, 2);
         lcd.print("your eye health!");
-        while (!ButtonPressed) {
+        while (!ButtonPressed)
+        {
           button();
         }
-        if (ButtonPressed) {
+        if (ButtonPressed)
+        {
           delay(3000);
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -419,10 +969,12 @@ void detoxDrink() {
           lcd.print("Any milk works!");
           lcd.setCursor(0, 2);
           lcd.print("Soy, animal, etc.");
-          while (!ButtonPressed) {
+          while (!ButtonPressed)
+          {
             button();
           }
-          if (ButtonPressed) {
+          if (ButtonPressed)
+          {
             delay(3000);
             lcd.clear();
             lcd.setCursor(0, 0);
@@ -436,16 +988,20 @@ void detoxDrink() {
           }
         }
       }
-    } else if (drinkSelection == 2) {
+    }
+    else if (drinkSelection == 2)
+    {
       lcd.print("1. a frozen banana");
       lcd.setCursor(0, 2);
       lcd.print("Bananas help you");
       lcd.setCursor(0, 3);
       lcd.print("with digestion!");
-      while (!ButtonPressed) {
+      while (!ButtonPressed)
+      {
         button();
       }
-      if (ButtonPressed) {
+      if (ButtonPressed)
+      {
         delay(3000);
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -456,10 +1012,12 @@ void detoxDrink() {
         lcd.print("Peanuts provide you");
         lcd.setCursor(0, 3);
         lcd.print("with good fats!");
-        while (!ButtonPressed) {
+        while (!ButtonPressed)
+        {
           button();
         }
-        if (ButtonPressed) {
+        if (ButtonPressed)
+        {
           delay(3000);
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -468,10 +1026,12 @@ void detoxDrink() {
           lcd.print("Any milk works!");
           lcd.setCursor(0, 2);
           lcd.print("Soy, animal, etc.");
-          while (!ButtonPressed) {
+          while (!ButtonPressed)
+          {
             button();
           }
-          if (ButtonPressed) {
+          if (ButtonPressed)
+          {
             delay(3000);
             lcd.clear();
             lcd.setCursor(0, 0);
@@ -485,16 +1045,20 @@ void detoxDrink() {
           }
         }
       }
-    } else if (drinkSelection == 3) {
+    }
+    else if (drinkSelection == 3)
+    {
       lcd.print("1. a frozen banana");
       lcd.setCursor(0, 2);
       lcd.print("Bananas help you");
       lcd.setCursor(0, 3);
       lcd.print("with digestion!");
-      while (!ButtonPressed) {
+      while (!ButtonPressed)
+      {
         button();
       }
-      if (ButtonPressed) {
+      if (ButtonPressed)
+      {
         delay(3000);
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -505,10 +1069,12 @@ void detoxDrink() {
         lcd.print("Pineapple gives you");
         lcd.setCursor(0, 3);
         lcd.print("lots of vitamin C!");
-        while (!ButtonPressed) {
+        while (!ButtonPressed)
+        {
           button();
         }
-        if (ButtonPressed) {
+        if (ButtonPressed)
+        {
           delay(3000);
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -519,10 +1085,12 @@ void detoxDrink() {
           lcd.print("but coconut milk");
           lcd.setCursor(0, 3);
           lcd.print("is recommended!");
-          while (!ButtonPressed) {
+          while (!ButtonPressed)
+          {
             button();
           }
-          if (ButtonPressed) {
+          if (ButtonPressed)
+          {
             delay(3000);
             lcd.clear();
             lcd.setCursor(0, 0);
@@ -536,16 +1104,20 @@ void detoxDrink() {
           }
         }
       }
-    } else if (drinkSelection == 4) {
+    }
+    else if (drinkSelection == 4)
+    {
       lcd.print("1. a frozen banana");
       lcd.setCursor(0, 2);
       lcd.print("Bananas help you");
       lcd.setCursor(0, 3);
       lcd.print("with digestion!");
-      while (!ButtonPressed) {
+      while (!ButtonPressed)
+      {
         button();
       }
-      if (ButtonPressed) {
+      if (ButtonPressed)
+      {
         delay(3000);
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -556,10 +1128,12 @@ void detoxDrink() {
         lcd.print("Strawberries have");
         lcd.setCursor(0, 3);
         lcd.print("a lot of antioxidants");
-        while (!ButtonPressed) {
+        while (!ButtonPressed)
+        {
           button();
         }
-        if (ButtonPressed) {
+        if (ButtonPressed)
+        {
           delay(3000);
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -570,10 +1144,12 @@ void detoxDrink() {
           lcd.print("Blueberries have");
           lcd.setCursor(0, 3);
           lcd.print("a lot of iron!");
-          while (!ButtonPressed) {
+          while (!ButtonPressed)
+          {
             button();
           }
-          if (ButtonPressed) {
+          if (ButtonPressed)
+          {
             delay(3000);
             lcd.clear();
             lcd.setCursor(0, 0);
@@ -582,10 +1158,12 @@ void detoxDrink() {
             lcd.print("Any milk works!");
             lcd.setCursor(0, 2);
             lcd.print("Soy, animal, etc.");
-            while (!ButtonPressed) {
+            while (!ButtonPressed)
+            {
               button();
             }
-            if (ButtonPressed) {
+            if (ButtonPressed)
+            {
               delay(3000);
               lcd.clear();
               lcd.setCursor(0, 0);
@@ -600,16 +1178,13 @@ void detoxDrink() {
           }
         }
       }
-
     }
   }
 }
-void menuButton() {
-  //if button is pressed, call mainMenu()
-}
 
-void mainMenu() {
-  int select = 0;
+void mainMenu()
+{
+int select = 0;
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Menu Selection");
@@ -622,7 +1197,7 @@ void mainMenu() {
   lcd.setCursor(10,1);
   lcd.print("4. Stats");
   lcd.setCursor(10,2);
-  lcd.print("5. Name");
+  lcd.print("5. Goals");
 
   while (!ButtonPressed) {
     button();
@@ -650,171 +1225,171 @@ void mainMenu() {
   }
   if (ButtonPressed) {
     lcd.noCursor();
-    buttonPressed = false;
-    menu = select;
+    ButtonPressed = false;
+    if(select==1){
+      button();
+      setupTime();
+    }else if(select==2){
+      button();
+      lightingControl();
+    }else if(select==3){
+      button();
+      setupCheckIn();
+    }else if(select==4){
+      button();
+      stats();
+    }else if(select==5){
+      button();
+      setUpGoals();
+    }
   }
 }
 
-void lightingControl() {
+int lightingControl()
+{
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print("How would you like");
   lcd.setCursor(0, 1);
   lcd.print("the lighting to be?");
   delay(3000);
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print("1. Party Mode!!");
-  lcd.setCursor(0,1);
-  lcd.print("2. RGB Beam")
-  lcd.setCursor(0,2);
-  lcd.print("3. Breathe~")
-  lcd.setCursor(0,3);
+  lcd.setCursor(0, 1);
+  lcd.print("2. RGB Beam");
+  lcd.setCursor(0, 2);
+  lcd.print("3. Breathe");
+  lcd.setCursor(0, 3);
   lcd.print("4. Rainbow");
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
     lcd.setCursor(18, 3);
-    if (encoderPos >= 5) {
+    if (encoderPos >= 5)
+    {
       encoderPos = 4;
-    } else if (encoderPos == 255) {
+    }
+    else if (encoderPos == 255)
+    {
       encoderPos = 1;
     }
     lcd.print(encoderPos);
   }
-  if (ButtonPressed) {
+  if (ButtonPressed)
+  {
     int lightSelection = encoderPos;
-    if(lightSelection==1){
+    if (lightSelection == 1)
+    {
       lcd.clear();
-      lcd.setCursor(0,0);
+      lcd.setCursor(0, 0);
       lcd.print("Party mode it is!");
-      lcd.setCursor(0,1);
+      lcd.setCursor(0, 1);
       lcd.print("LET'S PARTY!!");
-      lcd.setCursor(0,2);
+      lcd.setCursor(0, 2);
       lcd.print("OwO");
-      LED_PartyMode();
       delay(3000);
+      for(;;){
+        button();
+        LED_PartyMode(3,1);
+        if(ButtonPressed){
+          break;
+        }
+      }
+
+    }
+    else if (lightSelection == 2)
+    {
       lcd.clear();
-    }else if(lightSelection==2){
-      lcd.clear();
-      lcd.setCursor(0,0);
+      lcd.setCursor(0, 0);
       lcd.print("RGB Beam it is!");
-      lcd.setCursor(0,1);
+      lcd.setCursor(0, 1);
       lcd.print("red, green, blue...");
-      LED_RGBBeam();
       delay(3000);
       lcd.clear();
-    }else if(lightSelection==3){
+      for(;;){
+        button();
+        LED_RGBBeam(strip.Color(255,   0,   0)); // Red
+        LED_RGBBeam(strip.Color(  0, 255,   0)); // Green
+        LED_RGBBeam(strip.Color(  0,   0, 255)); // Blue
+        LED_RGBBeam(strip.Color(  0,   0,   0)); // True white (not RGB white)
+        if(ButtonPressed){
+          break;
+        }
+      }
+    }
+    else if (lightSelection == 3)
+    {
       lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Breathe it is~");
-      lcd.setCursor(0,1);
+      lcd.setCursor(0, 0);
+      lcd.print("Breathe it is");
+      lcd.setCursor(0, 1);
       lcd.print("let's relax");
-      lcd.setCursor(0,2);
-      lcd.print("together~");
-      LED_Breathe();
+      lcd.setCursor(0, 2);
+      lcd.print("together");
       delay(3000);
       lcd.clear();
-    }else if(lightSelection==4){
+      for(;;){
+        button();
+        LED_Breathe();
+        if(ButtonPressed){
+          break;
+        }
+      }
+    }
+    else if (lightSelection == 4)
+    {
       lcd.clear();
-      lcd.setCursor(0,0);
+      lcd.setCursor(0, 0);
       lcd.print("Rainbow it is!");
-      lcd.setCursor(0,1);
+      lcd.setCursor(0, 1);
       lcd.print("7 colors!!");
-      LED_Rainbow();
       delay(3000);
       lcd.clear();
-    }
-  }
-}
-void LED_PartyMode(int wait, int rainbowLoops, int whiteLoops){
-int fadeVal=0, fadeMax=100;
-
-    // Hue of first pixel runs 'rainbowLoops' complete loops through the color
-    // wheel. Color wheel has a range of 65536 but it's OK if we roll over, so
-    // just count from 0 to rainbowLoops*65536, using steps of 256 so we
-    // advance around the wheel at a decent clip.
-    for(uint32_t firstPixelHue = 0; firstPixelHue < rainbowLoops*65536;
-      firstPixelHue += 256) {
-
-      for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
-
-        // Offset pixel hue by an amount to make one full revolution of the
-        // color wheel (range of 65536) along the length of the strip
-        // (strip.numPixels() steps):
-        uint32_t pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
-
-        // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
-        // optionally add saturation and value (brightness) (each 0 to 255).
-        // Here we're using just the three-argument variant, though the
-        // second value (saturation) is a constant 255.
-        strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue, 255,
-          255 * fadeVal / fadeMax)));
-      }
-
-      strip.show();
-      delay(wait);
-
-      if(firstPixelHue < 65536) {                              // First loop,
-        if(fadeVal < fadeMax) fadeVal++;                       // fade in
-      } else if(firstPixelHue >= ((rainbowLoops-1) * 65536)) { // Last loop,
-        if(fadeVal > 0) fadeVal--;                             // fade out
-      } else {
-        fadeVal = fadeMax; // Interim loop, make sure fade is at max
+      for(;;){
+        button();
+        LED_Rainbow(75,5);
+        if(ButtonPressed){
+          break;
+        }
       }
     }
-
-    for(int k=0; k<whiteLoops; k++) {
-      for(int j=0; j<256; j++) { // Ramp up 0 to 255
-        // Fill entire strip with white at gamma-corrected brightness level 'j':
-        strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-        strip.show();
-      }
-      delay(1000); // Pause 1 second
-      for(int j=255; j>=0; j--) { // Ramp down 255 to 0
-        strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-        strip.show();
-      }
-    }
-
-    delay(500); // Pause 1/2 second
-}
-void LED_RGBBeam(uint32_t color, int wait){
-  for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
-    strip.setPixelColor(i, color);         //  Set pixel's color (in RAM)
-    strip.show();                          //  Update strip to match
-    delay(wait);                           //  Pause for a moment
   }
 }
-void LEDBreathe(uint8_t wait){
-  for(int j=0; j<256; j++) { // Ramp up from 0 to 255
-    // Fill entire strip with white at gamma-corrected brightness level 'j':
-    strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-    strip.show();
-    delay(wait);
-  }
 
-  for(int j=255; j>=0; j--) { // Ramp down from 255 to 0
-    strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-    strip.show();
-    delay(wait);
+void LED_RGBBeam(uint32_t color)
+{
+  for (int i = 0; i < strip.numPixels(); i++)
+  {                                // For each pixel in strip...
+    strip.setPixelColor(i, color); //  Set pixel's color (in RAM)
+    strip.show();                  //  Update strip to match
   }
 }
-void LED_Rainbow(){
-   if(whiteLength >= strip.numPixels()) whiteLength = strip.numPixels() - 1;
 
-  int      head          = whiteLength - 1;
-  int      tail          = 0;
-  int      loops         = 3;
-  int      loopNum       = 0;
-  uint32_t lastTime      = millis();
+void LED_Rainbow(int whiteSpeed, int whiteLength)
+{
+
+  if (whiteLength >= strip.numPixels())
+    whiteLength = strip.numPixels() - 1;
+
+  int head = whiteLength - 1;
+  int tail = 0;
+  int loops = 3;
+  int loopNum = 0;
+  uint32_t lastTime = millis();
   uint32_t firstPixelHue = 0;
 
-  for(;;) { // Repeat forever (or until a 'break' or 'return')
-    for(int i=0; i<strip.numPixels(); i++) {  // For each pixel in strip...
-      if(((i >= tail) && (i <= head)) ||      //  If between head & tail...
-         ((tail > head) && ((i >= tail) || (i <= head)))) {
+  for (;;)
+  { // Repeat forever (or until a 'break' or 'return')
+    for (int i = 0; i < strip.numPixels(); i++)
+    {                                     // For each pixel in strip...
+      if (((i >= tail) && (i <= head)) || //  If between head & tail...
+          ((tail > head) && ((i >= tail) || (i <= head))))
+      {
         strip.setPixelColor(i, strip.Color(0, 0, 0, 255)); // Set white
-      } else {                                             // else set rainbow
+      }
+      else
+      { // else set rainbow
         int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
         strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
       }
@@ -826,19 +1401,105 @@ void LED_Rainbow(){
 
     firstPixelHue += 40; // Advance just a little along the color wheel
 
-    if((millis() - lastTime) > whiteSpeed) { // Time to update head/tail?
-      if(++head >= strip.numPixels()) {      // Advance head, wrap around
+    if ((millis() - lastTime) > whiteSpeed)
+    { // Time to update head/tail?
+      if (++head >= strip.numPixels())
+      { // Advance head, wrap around
         head = 0;
-        if(++loopNum >= loops) return;
+        if (++loopNum >= loops)
+          return;
       }
-      if(++tail >= strip.numPixels()) {      // Advance tail, wrap around
+      if (++tail >= strip.numPixels())
+      { // Advance tail, wrap around
         tail = 0;
       }
-      lastTime = millis();                   // Save time of last movement
+      lastTime = millis(); // Save time of last movement
     }
   }
 }
-void setupTime() {
+
+void LED_Breathe()
+{
+  for (int j = 0; j < 256; j++)
+  { // Ramp up from 0 to 255
+    // Fill entire strip with white at gamma-corrected brightness level 'j':
+    strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
+    strip.show();
+  }
+
+  for (int j = 255; j >= 0; j--)
+  { // Ramp down from 255 to 0
+    strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
+    strip.show();
+  }
+}
+
+void LED_PartyMode(int rainbowLoops, int whiteLoops)
+{
+  int fadeVal = 0, fadeMax = 100;
+
+  // Hue of first pixel runs 'rainbowLoops' complete loops through the color
+  // wheel. Color wheel has a range of 65536 but it's OK if we roll over, so
+  // just count from 0 to rainbowLoops*65536, using steps of 256 so we
+  // advance around the wheel at a decent clip.
+  for (uint32_t firstPixelHue = 0; firstPixelHue < rainbowLoops * 65536;
+       firstPixelHue += 256)
+  {
+
+    for (int i = 0; i < strip.numPixels(); i++)
+    { // For each pixel in strip...
+
+      // Offset pixel hue by an amount to make one full revolution of the
+      // color wheel (range of 65536) along the length of the strip
+      // (strip.numPixels() steps):
+      uint32_t pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
+
+      // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
+      // optionally add saturation and value (brightness) (each 0 to 255).
+      // Here we're using just the three-argument variant, though the
+      // second value (saturation) is a constant 255.
+      strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue, 255,
+                                                          255 * fadeVal / fadeMax)));
+    }
+
+    strip.show();
+
+    if (firstPixelHue < 65536)
+    { // First loop,
+      if (fadeVal < fadeMax)
+        fadeVal++; // fade in
+    }
+    else if (firstPixelHue >= ((rainbowLoops - 1) * 65536))
+    { // Last loop,
+      if (fadeVal > 0)
+        fadeVal--; // fade out
+    }
+    else
+    {
+      fadeVal = fadeMax; // Interim loop, make sure fade is at max
+    }
+  }
+
+  for (int k = 0; k < whiteLoops; k++)
+  {
+    for (int j = 0; j < 256; j++)
+    { // Ramp up 0 to 255
+      // Fill entire strip with white at gamma-corrected brightness level 'j':
+      strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
+      strip.show();
+    }
+    delay(1000); // Pause 1 second
+    for (int j = 255; j >= 0; j--)
+    { // Ramp down 255 to 0
+      strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
+      strip.show();
+    }
+  }
+
+  delay(500); // Pause 1/2 second
+}
+void setupTime()
+{
   lcd.clear();
   lcd.setCursor(2, 0);
   lcd.print("Setting Up Time!");
@@ -889,15 +1550,20 @@ void setupTime() {
   timeNum = 0;
   setTime(hour1, min1, 30, day1, month1, year1);
 }
-void setupMonth() {
+void setupMonth()
+{
   month1 = 0;
   timeNum = 1;
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
-    if (oldEncPos < encoderPos && timeNum < 12) {
+    if (oldEncPos < encoderPos && timeNum < 12)
+    {
       oldEncPos = encoderPos;
       timeNum++;
-    } else if (oldEncPos > encoderPos && timeNum > 1) {
+    }
+    else if (oldEncPos > encoderPos && timeNum > 1)
+    {
       oldEncPos = encoderPos;
       timeNum--;
     }
@@ -914,15 +1580,20 @@ void setupMonth() {
   Serial.println("Month Set: " + month1);
   delay(1500);
 }
-void setupDay() {
+void setupDay()
+{
   day1 = 0;
   timeNum = 1;
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
-    if (oldEncPos < encoderPos && timeNum < 31) {
+    if (oldEncPos < encoderPos && timeNum < 31)
+    {
       oldEncPos = encoderPos;
       timeNum++;
-    } else if (oldEncPos > encoderPos && timeNum > 1) {
+    }
+    else if (oldEncPos > encoderPos && timeNum > 1)
+    {
       oldEncPos = encoderPos;
       timeNum--;
     }
@@ -939,15 +1610,20 @@ void setupDay() {
   Serial.println("Day Set: " + day1);
   delay(1500);
 }
-void setupYear() {
+void setupYear()
+{
   year1 = 0;
   timeNum = 2021;
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
-    if (oldEncPos < encoderPos && timeNum < 2100) {
+    if (oldEncPos < encoderPos && timeNum < 2100)
+    {
       oldEncPos = encoderPos;
       timeNum++;
-    } else if (oldEncPos > encoderPos && timeNum > 2021) {
+    }
+    else if (oldEncPos > encoderPos && timeNum > 2021)
+    {
       oldEncPos = encoderPos;
       timeNum--;
     }
@@ -964,15 +1640,20 @@ void setupYear() {
   Serial.println("Year Set: " + year1);
   delay(1500);
 }
-void setupHour() {
+void setupHour()
+{
   hour1 = 0;
   timeNum = 1;
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
-    if (oldEncPos < encoderPos && timeNum < 24) {
+    if (oldEncPos < encoderPos && timeNum < 24)
+    {
       oldEncPos = encoderPos;
       timeNum++;
-    } else if (oldEncPos > encoderPos && timeNum > 1) {
+    }
+    else if (oldEncPos > encoderPos && timeNum > 1)
+    {
       oldEncPos = encoderPos;
       timeNum--;
     }
@@ -989,15 +1670,20 @@ void setupHour() {
   Serial.println("Hour Set: " + year1);
   delay(1500);
 }
-void setupMin() {
+void setupMin()
+{
   min1 = 0;
   timeNum = 0;
-  while (!ButtonPressed) {
+  while (!ButtonPressed)
+  {
     button();
-    if (oldEncPos < encoderPos && timeNum < 60) {
+    if (oldEncPos < encoderPos && timeNum < 60)
+    {
       oldEncPos = encoderPos;
       timeNum++;
-    } else if (oldEncPos > encoderPos && timeNum > 1) {
+    }
+    else if (oldEncPos > encoderPos && timeNum > 1)
+    {
       oldEncPos = encoderPos;
       timeNum--;
     }
@@ -1014,7 +1700,8 @@ void setupMin() {
   Serial.println("Min Set: " + year1);
   delay(1500);
 }
-void displayTempTime() {
+void displayTempTime()
+{
   //Sensor takes a bit to read sometimes, best to delay at 2
   delay(5000);
   // Read temperature as Celsius
@@ -1025,17 +1712,19 @@ void displayTempTime() {
   float h = dht.readHumidity();
   Serial.print(c);
   Serial.print(f);
-  if (!(isnan(c))) {
+  if (!(isnan(c)))
+  {
     pc = c;
   }
-  if (!(isnan(f))) {
+  if (!(isnan(f)))
+  {
     pf = f;
   }
   String d = (String)month() + "/" + (String)day() + "/" + (String)year();
   //Time
   String t = (String)hour() + ":" + (String)minute(); //add +":"+(String)second() for seconds
 
-  lcd.createChar(0, degree);
+ lcd.createChar(0, degree);
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Date = ");
@@ -1056,7 +1745,8 @@ void displayTempTime() {
   lcd.print((int)h * 0.1);
   lcd.print("%");
 }
-firstTime(){
+void firstTime()
+{
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("|");
@@ -1080,23 +1770,273 @@ firstTime(){
   lcd.print("AuroraBot......");
   delay(3000);
   setupTime();
+  setupCheckIn();
+  setUpGoals();
 }
-void loop() {
-  firstTime();
-  /*
-    if (menu == 1) {
-     //Time Setup
-     setupTime();
-     menu++;
-    } else if (menu == 2) {
-     displayTempTime();
-    } else if (menu == 3) {
-    } else if (menu == 4) {
-    } else if (menu == 5) {
-    }*/
-  daysActive++;
-  if (i == 1) {
-    morningCheckIn();
-    i = 2;
+void setupCheckIn(){
+ button();
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("When would you like");
+ lcd.setCursor(0,1);
+ lcd.print("to have your morning");
+ lcd.setCursor(0,2);
+ lcd.print("check in?");
+  while (!ButtonPressed)
+  {
+    button();
+    lcd.setCursor(9, 3);
+    if (encoderPos == 24)
+    {
+      encoderPos = 23;
+    }
+    else if (encoderPos == 255)
+    {
+      encoderPos = 0;
+    }
+    lcd.print(encoderPos);
+    if(encoderPos<12){
+      lcd.setCursor(11,3);
+      lcd.print("a.m.");
+    }else{
+      lcd.setCursor(11,3);
+      lcd.print("p.m.");
+    }
   }
+  if(ButtonPressed){
+    morningCheckInTime=encoderPos;
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Awesome!");
+    lcd.setCursor(0,1);
+    lcd.print("See you then!");
+    delay(3000);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("When would you like");
+    lcd.setCursor(0,1);
+    lcd.print("to have your midday");
+    lcd.setCursor(0,2);
+    lcd.print("check in?");
+    button();
+    while (!ButtonPressed)
+    {
+      button();
+      lcd.setCursor(9, 3);
+      if (encoderPos == 24)
+      {
+        encoderPos = 23;
+      }
+      else if (encoderPos == 255)
+      {
+        encoderPos = 0;
+      }
+      lcd.print(encoderPos);
+      if(encoderPos<12){
+        lcd.setCursor(11,3);
+        lcd.print("a.m.");
+      }else{
+        lcd.setCursor(11,3);
+        lcd.print("p.m.");
+      }
+    }
+    if(ButtonPressed){
+      middayCheckInTime=encoderPos;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Awesome!");
+      lcd.setCursor(0,1);
+      lcd.print("See you then!");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("When would you like");
+      lcd.setCursor(0,1);
+      lcd.print("to have your night");
+      lcd.setCursor(0,2);
+      lcd.print("check in?");
+      button();
+      while (!ButtonPressed)
+      {
+        button();
+        lcd.setCursor(9, 3);
+        if (encoderPos == 24)
+        {
+          encoderPos = 23;
+        }
+        else if (encoderPos == 255)
+        {
+          encoderPos = 0;
+        }
+        lcd.print(encoderPos);
+        if(encoderPos<12){
+          lcd.setCursor(11,3);
+          lcd.print("a.m.");
+        }else{
+          lcd.setCursor(11,3);
+          lcd.print("p.m.");
+        }
+      }if(ButtonPressed){
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Awesome!");
+        delay(3000);
+        lcd.clear();
+        button();
+      }
+    }
+  }
+}
+void setUpGoals(){
+button();
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("How many hours would");
+ lcd.setCursor(0,1);
+ lcd.print("you like to sleep?");
+  while (!ButtonPressed)
+  {
+    button();
+    lcd.setCursor(9, 2);
+    if (encoderPos == 24)
+    {
+      encoderPos = 23;
+    }
+    else if (encoderPos == 255)
+    {
+      encoderPos = 0;
+    }
+    lcd.print(encoderPos);
+    lcd.setCursor(11,2);
+    lcd.print("hours");
+  }
+  if(ButtonPressed){
+    goalSleepTime=encoderPos;
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Awesome!");
+    lcd.setCursor(0,1);
+    lcd.print("That sounds like");
+    lcd.setCursor(0,2);
+    lcd.print("a good goal");
+    delay(3000);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("What is your goal");
+    lcd.setCursor(0,1);
+    lcd.print("for your midday");
+    lcd.setCursor(0,2);
+    lcd.print("rating?");
+    button();
+    while (!ButtonPressed)
+    {
+      button();
+      lcd.setCursor(9, 3);
+      if (encoderPos == 11)
+      {
+        encoderPos = 10;
+      }
+      else if (encoderPos == 255)
+      {
+        encoderPos = 0;
+      }
+      lcd.print(encoderPos);
+    }
+    if(ButtonPressed){
+      goalMidday=encoderPos;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Awesome!");
+      lcd.setCursor(0,1);
+      lcd.print("Sounds like a good");
+      lcd.setCursor(0,2);
+      lcd.print("goal to achieve!");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("What is your goal");
+      lcd.setCursor(0,1);
+      lcd.print("for your night");
+      lcd.setCursor(0,2);
+      lcd.print("check in?");
+      button();
+      while (!ButtonPressed)
+      {
+        button();
+        lcd.setCursor(9, 3);
+        if (encoderPos == 11)
+        {
+          encoderPos = 10;
+        }
+        else if (encoderPos == 255)
+        {
+          encoderPos = 0;
+        }
+        lcd.print(encoderPos);
+      }if(ButtonPressed){
+        goalNight=encoderPos;
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Awesome!");
+        lcd.setCursor(0,1);
+        lcd.print("Sounds like a good");
+        lcd.setCursor(0,2);
+        lcd.print("goal to achieve!");
+        delay(3000);
+        button();
+      }
+    }
+  }
+}
+void stats(){
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("avg. sleep:");
+  lcd.setCursor(12,0);
+  lcd.print(avgSleepTime);
+  lcd.setCursor(14,0);
+  lcd.print("hrs");
+  lcd.setCursor(0,1);
+  lcd.print("avg. mid. rate:");
+  lcd.setCursor(16,1);
+  lcd.print(avgMidday);
+  lcd.setCursor(0,2);
+  lcd.print("avg. night rate:");
+  lcd.setCursor(17,2);
+  lcd.print(avgNight);
+  button();
+  while (!ButtonPressed)
+    {
+      button();
+    }
+    if(ButtonPressed){
+      lcd.clear();
+    }
+}
+void newDay(){
+ if(hour()==0&&minute()==0&&second()==0){
+   daysActive++;
+ }
+}
+void timeForCheckIn(){
+ if(hour()==morningCheckInTime){
+   morningCheckIn();
+ }
+ else if(hour()==middayCheckInTime){
+   middayCheckIn();
+ }else if(hour()==nightCheckInTime){
+   nightCheckIn();
+ }
+}
+void isJustRestarted(){
+   if(justRestarted){
+    firstTime();
+    justRestarted=false;
+  }
+}
+void loop(){
+  isJustRestarted();
+  newDay();
+  menuButton();
+  timeForCheckIn();
 }
