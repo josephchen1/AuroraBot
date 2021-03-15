@@ -5,6 +5,9 @@
 #include <Adafruit_NeoPixel.h>
 #define DHTPIN A0
 #define DHTTYPE DHT11
+#ifdef __AVR__
+ #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
+#endif
 
 float pf;
 float pc;
@@ -32,6 +35,7 @@ volatile byte oldEncPos = 0;
 volatile byte reading = 0;
 
 int i = 1;
+int owo=1;//variable just for demoing
 int counter = 0;
 unsigned long lastButtonPress = 0;
 float TimeNow1;
@@ -39,14 +43,14 @@ boolean ButtonPressed = false;
 
 unsigned long lastButtonPressM = 0;
 boolean ButtonPressedM = false;
-
+//variables to set time
 int timeNum = 1;
 int month1;
 int day1;
 int year1;
 int hour1;
 int min1;
-
+//variables to keep track of the data collected from check-ins
 int daysActive = 1;
 double avgSleepTime = 0;
 int totalSleepTime = 0;
@@ -59,7 +63,7 @@ int goalMidday = 8;
 double avgNight = 0;
 int totalNight = 0;
 int goalNight = 7;
-
+//variables to keep track of when the user wants to check in
 int morningCheckInTime = 0;
 int middayCheckInTime = 0;
 int nightCheckInTime = 0;
@@ -70,13 +74,21 @@ boolean justRestarted = true;
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 DHT dht(DHTPIN, DHTTYPE);
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(28, LED, NEO_GRB + NEO_KHZ800);
-
+//vectors to store data from check ins
 Vector<int> sleepData;
 Vector<int> middayData;
 Vector<int> nightData;
 void setup()
 {
-  //Don't change anything below
+  //the code that looks weird
+  //(like the next three lines)
+  //are all from external sources.
+  #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
+  clock_prescale_set(clock_div_1);
+  #endif
+  strip.begin();
+  strip.show();
+  strip.setBrightness(50);
   pinMode(pinA, INPUT_PULLUP);
   pinMode(pinB, INPUT_PULLUP);
   pinMode(CLK, INPUT_PULLUP);
@@ -88,11 +100,9 @@ void setup()
   lcd.init();
   lcd.backlight();
   Serial.begin(9600);
-  strip.begin();
-  strip.setBrightness(85);
-  strip.show();
   randomSeed(analogRead(10));
 }
+//standard button stuff, copied from textbook
 void button()
 {
   int btnState = digitalRead(CLK);
@@ -112,6 +122,7 @@ void button()
   }
   delay(1);
 }
+//standard button stuff, copied from textbook
 void menuButton()
 {
   int btnStateM = digitalRead(MENUBTN);
@@ -122,8 +133,17 @@ void menuButton()
     if (millis() - lastButtonPressM > 50)
     {
       ButtonPressedM = true;
-//      menuOn = !menuOn;
-      Serial.print("hi");
+      if(i==1){
+        i=2;//dunno why but buttonpressedM is true when you just restart
+        //so this is to prevent that.
+      }else{
+        menuOn = !menuOn;
+        if(menuOn){
+          mainMenu();
+        }else{
+          return;
+        }
+      }
     }
     lastButtonPressM = millis();
   }
@@ -132,12 +152,8 @@ void menuButton()
     ButtonPressedM = false;
   }
   delay(1);
-//  if(menuOn){
-//    mainMenu();
-//  }else if(!menuOn){
-//    return;
-//  }
 }
+//copied from web
 void PinA()
 {
   reading = PIND & 0xC;
@@ -152,6 +168,7 @@ void PinA()
     bFlag = 1;
   }
 }
+//copied from web
 void PinB()
 {
   reading = PIND & 0xC;
@@ -166,6 +183,8 @@ void PinB()
     aFlag = 1;
   }
 }
+//morning check in! this is really long
+//because of all the text
 void morningCheckIn()
 {
   button();
@@ -177,6 +196,9 @@ void morningCheckIn()
   lcd.setCursor(0, 3);
   while (!ButtonPressed)
   {
+    //this is to keep the encoder
+    //within a reasonable range.
+    //for example: someone can't sleep for 25 hours a day
     button();
     lcd.setCursor(18, 3);
     if (encoderPos == 25)
@@ -200,6 +222,9 @@ void morningCheckIn()
     lcd.setCursor(0, 2);
     lcd.print("hours");
     delay(3000);
+    //calculating average,
+    //i only want to keep it
+    //as an integer, no decimals
     sleepData.PushBack(sleepTime);
     totalSleepTime += sleepTime;
     avgSleepTime = (totalSleepTime / daysActive);
@@ -296,8 +321,18 @@ void morningCheckIn()
               lcd.setCursor(0, 3);
               lcd.print("exercise...");
               delay(3000);
+              for(int i=1;i<3;i++){
+                  LED_RGBBeam(strip.Color(255,   0,   0), 200); // Red
+                  LED_RGBBeam(strip.Color(  0, 255,   0), 250); // Green
+                  LED_RGBBeam(strip.Color(  0,   0, 255), 350); // Blue
+              }
               lcd.clear();
-              breathingExercise();
+              lcd.setCursor(0,0);
+              lcd.print("Yay! Hope you feel");
+              lcd.setCursor(0,1);
+              lcd.print("better now!");
+              delay(3000);
+              lcd.clear();
             }
           }
         }
@@ -371,6 +406,8 @@ void morningCheckIn()
     }
   }
 }
+//midday check in! this is really long
+//because of all the text
 void middayCheckIn()
 {
   button();
@@ -414,13 +451,13 @@ void middayCheckIn()
       lcd.print("You average midday");
       lcd.setCursor(0, 1);
       lcd.print("rating is ");
-      lcd.setCursor(8, 1);
-      lcd.print(avgMidday);
       lcd.setCursor(10, 1);
-      lcd.print("hours");
+      lcd.print(avgMidday);
+      lcd.setCursor(12, 1);
+      lcd.print("/10");
       delay(3000);
       lcd.clear();
-      if (avgMidday < goalMidday)
+      if (middayRating < goalMidday)
       {
         lcd.setCursor(0, 0);
         lcd.print(":( Sorry about that");
@@ -435,9 +472,7 @@ void middayCheckIn()
         lcd.setCursor(0, 1);
         lcd.print("2. Unmotivated");
         lcd.setCursor(0, 2);
-        lcd.print("3. It was alright");
-        lcd.setCursor(0, 3);
-        lcd.print("I needed a break");
+        lcd.print("3. I needed a break");
         button();
         while (!ButtonPressed)
         {
@@ -515,7 +550,11 @@ void middayCheckIn()
                 lcd.print("in the world!");
                 lcd.setCursor(0,3);
                 lcd.print("Good night!");
-                LED_Breathe();
+                for(int loop = 1;loop<300;loop++){
+                  LED_RGBBeam(strip.Color(255,   0,   0), 200); // Red
+                  LED_RGBBeam(strip.Color(  0, 255,   0), 200); // Green
+                  LED_RGBBeam(strip.Color(  0,   0, 255), 200); // Blue
+                }
               }else if(encoderPos==2){
                 lcd.setCursor(0,0);
                 lcd.print("You should try");
@@ -613,6 +652,8 @@ void middayCheckIn()
       }
     }
 }
+//night check in! this is really long
+//because of all the text
 void nightCheckIn()
 {
   button();
@@ -664,7 +705,7 @@ void nightCheckIn()
       lcd.print("out of 10");
       delay(3000);
       lcd.clear();
-      if (avgMidday < goalMidday)
+      if (nightRating < goalMidday)
       {
         lcd.setCursor(0, 0);
         lcd.print(":( Sorry about that");
@@ -741,7 +782,7 @@ void nightCheckIn()
               }
               if (encoderPos == 1)
               {
-                lcd.print("Ohh yes!!");
+                lcd.print("Ohh yes!!!");
               }
               else
               {
@@ -759,7 +800,9 @@ void nightCheckIn()
                 lcd.print("finish line!");
                 lcd.setCursor(0,3);
                 lcd.print("Good luck!");
-                LED_Breathe();
+                for(int loop=1;loop<100;loop++){
+                  LED_Rainbow(75,5);
+                }
               }else if(encoderPos==2){
                 lcd.setCursor(0,0);
                 lcd.print("Of course!");
@@ -857,38 +900,8 @@ void nightCheckIn()
       }
     }
 }
-void breathingExercise()
-{
-  for(int loops=1;i<=10;i++){
-    int TOTAL_LEDS = 28;
-    float MaximumBrightness = 255;
-    float SpeedFactor = 0.005;
-    float StepDelay = 5;
-
-    // Make the lights breathe
-    for (int i = 0; i < 65535; i++)
-    {
-      float intensity = MaximumBrightness / 2.0 * (1.0 + sin(SpeedFactor * i));
-      strip.setBrightness(intensity);
-      for (int ledNumber = 0; ledNumber < TOTAL_LEDS; ledNumber++)
-      {
-        strip.setPixelColor(ledNumber, 0, 0, 255);
-      }
-
-      strip.show();
-      delay(StepDelay);
-    }
-  }
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Yay! Hope you feel");
-  lcd.setCursor(0,1);
-  lcd.print("better now!");
-  delay(3000);
-  lcd.clear();
-}
-void detoxDrink()
-{
+//the recipes are copied online
+void detoxDrink(){
   button();
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -922,7 +935,7 @@ void detoxDrink()
     lcd.setCursor(0, 1);
     lcd.print("simply add all");
     lcd.setCursor(0, 2);
-    lcd.print("ingredients in a");
+    lcd.print("ingredients together");
     lcd.setCursor(0, 3);
     lcd.print("and blend them, yum!");
     delay(5000);
@@ -941,110 +954,71 @@ void detoxDrink()
       lcd.print("Bananas help you");
       lcd.setCursor(0, 2);
       lcd.print("with digestion!");
-      while (!ButtonPressed)
-      {
-        button();
-      }
-      if (ButtonPressed)
-      {
-        delay(3000);
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("2. a cup of spinach");
-        lcd.setCursor(0, 1);
-        lcd.print("Spinach benefits");
-        lcd.setCursor(0, 2);
-        lcd.print("your eye health!");
-        while (!ButtonPressed)
-        {
-          button();
-        }
-        if (ButtonPressed)
-        {
-          delay(3000);
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("3. a cup of milk");
-          lcd.setCursor(0, 1);
-          lcd.print("Any milk works!");
-          lcd.setCursor(0, 2);
-          lcd.print("Soy, animal, etc.");
-          while (!ButtonPressed)
-          {
-            button();
-          }
-          if (ButtonPressed)
-          {
-            delay(3000);
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("4. Honey to taste");
-            lcd.setCursor(0, 1);
-            lcd.print("Everyone needs a");
-            lcd.setCursor(0, 2);
-            lcd.print("little sweetness");
-            lcd.setCursor(0, 3);
-            lcd.print("in their life!");
-          }
-        }
-      }
-    }
-    else if (drinkSelection == 2)
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("2. a cup of spinach");
+      lcd.setCursor(0, 1);
+      lcd.print("Spinach benefits");
+      lcd.setCursor(0, 2);
+      lcd.print("your eye health!");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("3. a cup of milk");
+      lcd.setCursor(0, 1);
+      lcd.print("Any milk works!");
+      lcd.setCursor(0, 2);
+      lcd.print("Soy, animal, etc.");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("4. Honey to taste");
+      lcd.setCursor(0, 1);
+      lcd.print("Everyone needs a");
+      lcd.setCursor(0, 2);
+      lcd.print("little sweetness");
+      lcd.setCursor(0, 3);
+      lcd.print("in their life!");
+      delay(3000);
+      lcd.clear();
+    }else if (drinkSelection == 2)
     {
       lcd.print("1. a frozen banana");
       lcd.setCursor(0, 2);
       lcd.print("Bananas help you");
       lcd.setCursor(0, 3);
       lcd.print("with digestion!");
-      while (!ButtonPressed)
-      {
-        button();
-      }
-      if (ButtonPressed)
-      {
-        delay(3000);
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("2. a tbsp of peanut");
-        lcd.setCursor(0, 1);
-        lcd.print("butter.");
-        lcd.setCursor(0, 2);
-        lcd.print("Peanuts provide you");
-        lcd.setCursor(0, 3);
-        lcd.print("with good fats!");
-        while (!ButtonPressed)
-        {
-          button();
-        }
-        if (ButtonPressed)
-        {
-          delay(3000);
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("3. a cup of milk");
-          lcd.setCursor(0, 1);
-          lcd.print("Any milk works!");
-          lcd.setCursor(0, 2);
-          lcd.print("Soy, animal, etc.");
-          while (!ButtonPressed)
-          {
-            button();
-          }
-          if (ButtonPressed)
-          {
-            delay(3000);
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("4. Honey to taste");
-            lcd.setCursor(0, 1);
-            lcd.print("Everyone needs a");
-            lcd.setCursor(0, 2);
-            lcd.print("little sweetness");
-            lcd.setCursor(0, 3);
-            lcd.print("in their life!");
-          }
-        }
-      }
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("2. a tbsp of peanut");
+      lcd.setCursor(0, 1);
+      lcd.print("butter.");
+      lcd.setCursor(0, 2);
+      lcd.print("Peanuts provide you");
+      lcd.setCursor(0, 3);
+      lcd.print("with good fats!");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("3. a cup of milk");
+      lcd.setCursor(0, 1);
+      lcd.print("Any milk works!");
+      lcd.setCursor(0, 2);
+      lcd.print("Soy, animal, etc.");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("4. Honey to taste");
+      lcd.setCursor(0, 1);
+      lcd.print("Everyone needs a");
+      lcd.setCursor(0, 2);
+      lcd.print("little sweetness");
+      lcd.setCursor(0, 3);
+      lcd.print("in their life!");
+      delay(3000);
+      lcd.clear();
     }
     else if (drinkSelection == 3)
     {
@@ -1053,57 +1027,38 @@ void detoxDrink()
       lcd.print("Bananas help you");
       lcd.setCursor(0, 3);
       lcd.print("with digestion!");
-      while (!ButtonPressed)
-      {
-        button();
-      }
-      if (ButtonPressed)
-      {
-        delay(3000);
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("2. a cup of");
-        lcd.setCursor(0, 1);
-        lcd.print("pineapple.");
-        lcd.setCursor(0, 2);
-        lcd.print("Pineapple gives you");
-        lcd.setCursor(0, 3);
-        lcd.print("lots of vitamin C!");
-        while (!ButtonPressed)
-        {
-          button();
-        }
-        if (ButtonPressed)
-        {
-          delay(3000);
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("3. a cup of milk");
-          lcd.setCursor(0, 1);
-          lcd.print("Any milk works!");
-          lcd.setCursor(0, 2);
-          lcd.print("but coconut milk");
-          lcd.setCursor(0, 3);
-          lcd.print("is recommended!");
-          while (!ButtonPressed)
-          {
-            button();
-          }
-          if (ButtonPressed)
-          {
-            delay(3000);
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("4. Honey to taste");
-            lcd.setCursor(0, 1);
-            lcd.print("Everyone needs a");
-            lcd.setCursor(0, 2);
-            lcd.print("little sweetness");
-            lcd.setCursor(0, 3);
-            lcd.print("in their life!");
-          }
-        }
-      }
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("2. a cup of");
+      lcd.setCursor(0, 1);
+      lcd.print("pineapple.");
+      lcd.setCursor(0, 2);
+      lcd.print("Pineapple gives you");
+      lcd.setCursor(0, 3);
+      lcd.print("lots of vitamin C!");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("3. a cup of milk");
+      lcd.setCursor(0, 1);
+      lcd.print("Any milk works!");
+      lcd.setCursor(0, 2);
+      lcd.print("but coconut milk");
+      lcd.setCursor(0, 3);
+      lcd.print("is recommended!");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("4. Honey to taste");
+      lcd.setCursor(0, 1);
+      lcd.print("Everyone needs a");
+      lcd.setCursor(0, 2);
+      lcd.print("little sweetness");
+      lcd.setCursor(0, 3);
+      lcd.print("in their life!");
+      delay(3000);
+      lcd.clear();
     }
     else if (drinkSelection == 4)
     {
@@ -1112,79 +1067,53 @@ void detoxDrink()
       lcd.print("Bananas help you");
       lcd.setCursor(0, 3);
       lcd.print("with digestion!");
-      while (!ButtonPressed)
-      {
-        button();
-      }
-      if (ButtonPressed)
-      {
-        delay(3000);
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("2. a cup of");
-        lcd.setCursor(0, 1);
-        lcd.print("strawberry.");
-        lcd.setCursor(0, 2);
-        lcd.print("Strawberries have");
-        lcd.setCursor(0, 3);
-        lcd.print("a lot of antioxidants");
-        while (!ButtonPressed)
-        {
-          button();
-        }
-        if (ButtonPressed)
-        {
-          delay(3000);
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("3. a cup of");
-          lcd.setCursor(0, 1);
-          lcd.print("blueberry.");
-          lcd.setCursor(0, 2);
-          lcd.print("Blueberries have");
-          lcd.setCursor(0, 3);
-          lcd.print("a lot of iron!");
-          while (!ButtonPressed)
-          {
-            button();
-          }
-          if (ButtonPressed)
-          {
-            delay(3000);
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("3. a cup of milk");
-            lcd.setCursor(0, 1);
-            lcd.print("Any milk works!");
-            lcd.setCursor(0, 2);
-            lcd.print("Soy, animal, etc.");
-            while (!ButtonPressed)
-            {
-              button();
-            }
-            if (ButtonPressed)
-            {
-              delay(3000);
-              lcd.clear();
-              lcd.setCursor(0, 0);
-              lcd.print("4. Honey to taste");
-              lcd.setCursor(0, 1);
-              lcd.print("Everyone needs a");
-              lcd.setCursor(0, 2);
-              lcd.print("little sweetness");
-              lcd.setCursor(0, 3);
-              lcd.print("in their life!");
-            }
-          }
-        }
-      }
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("2. a cup of");
+      lcd.setCursor(0, 1);
+      lcd.print("strawberry.");
+      lcd.setCursor(0, 2);
+      lcd.print("Strawberries have");
+      lcd.setCursor(0, 3);
+      lcd.print("a lot of antioxidants");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("3. a cup of");
+      lcd.setCursor(0, 1);
+      lcd.print("blueberry.");
+      lcd.setCursor(0, 2);
+      lcd.print("Blueberries have");
+      lcd.setCursor(0, 3);
+      lcd.print("a lot of iron!");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("4. a cup of milk");
+      lcd.setCursor(0, 1);
+      lcd.print("Any milk works!");
+      lcd.setCursor(0, 2);
+      lcd.print("Soy, animal, etc.");
+      delay(3000);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("5. Honey to taste");
+      lcd.setCursor(0, 1);
+      lcd.print("Everyone needs a");
+      lcd.setCursor(0, 2);
+      lcd.print("little sweetness");
+      lcd.setCursor(0, 3);
+      lcd.print("in their life!");
+      delay(3000);
+      lcd.clear();
     }
   }
 }
-
+//joseph wrote this:
 void mainMenu()
 {
-int select = 0;
+  int select = 0;
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Menu Selection");
@@ -1244,7 +1173,8 @@ int select = 0;
     }
   }
 }
-
+//simple lighting control
+//i have 4 options prepared!
 int lightingControl()
 {
   lcd.clear();
@@ -1259,16 +1189,14 @@ int lightingControl()
   lcd.setCursor(0, 1);
   lcd.print("2. RGB Beam");
   lcd.setCursor(0, 2);
-  lcd.print("3. Breathe");
-  lcd.setCursor(0, 3);
-  lcd.print("4. Rainbow");
+  lcd.print("3. Rainbow");
   while (!ButtonPressed)
   {
     button();
     lcd.setCursor(18, 3);
-    if (encoderPos >= 5)
+    if (encoderPos >= 4)
     {
-      encoderPos = 4;
+      encoderPos = 3;
     }
     else if (encoderPos == 255)
     {
@@ -1289,12 +1217,8 @@ int lightingControl()
       lcd.setCursor(0, 2);
       lcd.print("OwO");
       delay(3000);
-      for(;;){
-        button();
-        LED_PartyMode(3,1);
-        if(ButtonPressed){
-          break;
-        }
+      for(int loop=1;loop<300;loop++){
+        LED_PartyMode(3);
       }
 
     }
@@ -1307,37 +1231,13 @@ int lightingControl()
       lcd.print("red, green, blue...");
       delay(3000);
       lcd.clear();
-      for(;;){
-        button();
-        LED_RGBBeam(strip.Color(255,   0,   0)); // Red
-        LED_RGBBeam(strip.Color(  0, 255,   0)); // Green
-        LED_RGBBeam(strip.Color(  0,   0, 255)); // Blue
-        LED_RGBBeam(strip.Color(  0,   0,   0)); // True white (not RGB white)
-        if(ButtonPressed){
-          break;
-        }
+      for(int loop=1;loop<300;loop++){
+        LED_RGBBeam(strip.Color(255,   0,   0), 50); // Red
+        LED_RGBBeam(strip.Color(  0, 255,   0), 50); // Green
+        LED_RGBBeam(strip.Color(  0,   0, 255), 50); // Blue
       }
     }
     else if (lightSelection == 3)
-    {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("Breathe it is");
-      lcd.setCursor(0, 1);
-      lcd.print("let's relax");
-      lcd.setCursor(0, 2);
-      lcd.print("together");
-      delay(3000);
-      lcd.clear();
-      for(;;){
-        button();
-        LED_Breathe();
-        if(ButtonPressed){
-          break;
-        }
-      }
-    }
-    else if (lightSelection == 4)
     {
       lcd.clear();
       lcd.setCursor(0, 0);
@@ -1346,26 +1246,23 @@ int lightingControl()
       lcd.print("7 colors!!");
       delay(3000);
       lcd.clear();
-      for(;;){
-        button();
+      for(int loop=1;loop<300;loop++){
         LED_Rainbow(75,5);
-        if(ButtonPressed){
-          break;
-        }
       }
     }
   }
 }
-
-void LED_RGBBeam(uint32_t color)
+//copied from web
+void LED_RGBBeam(uint32_t color, int wait)
 {
   for (int i = 0; i < strip.numPixels(); i++)
   {                                // For each pixel in strip...
     strip.setPixelColor(i, color); //  Set pixel's color (in RAM)
     strip.show();                  //  Update strip to match
+    delay(wait);
   }
 }
-
+//copied from web
 void LED_Rainbow(int whiteSpeed, int whiteLength)
 {
 
@@ -1417,24 +1314,8 @@ void LED_Rainbow(int whiteSpeed, int whiteLength)
     }
   }
 }
-
-void LED_Breathe()
-{
-  for (int j = 0; j < 256; j++)
-  { // Ramp up from 0 to 255
-    // Fill entire strip with white at gamma-corrected brightness level 'j':
-    strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-    strip.show();
-  }
-
-  for (int j = 255; j >= 0; j--)
-  { // Ramp down from 255 to 0
-    strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-    strip.show();
-  }
-}
-
-void LED_PartyMode(int rainbowLoops, int whiteLoops)
+//copied from web
+void LED_PartyMode(int rainbowLoops)
 {
   int fadeVal = 0, fadeMax = 100;
 
@@ -1479,27 +1360,11 @@ void LED_PartyMode(int rainbowLoops, int whiteLoops)
       fadeVal = fadeMax; // Interim loop, make sure fade is at max
     }
   }
-
-  for (int k = 0; k < whiteLoops; k++)
-  {
-    for (int j = 0; j < 256; j++)
-    { // Ramp up 0 to 255
-      // Fill entire strip with white at gamma-corrected brightness level 'j':
-      strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-      strip.show();
-    }
-    delay(1000); // Pause 1 second
-    for (int j = 255; j >= 0; j--)
-    { // Ramp down 255 to 0
-      strip.fill(strip.Color(0, 0, 0, strip.gamma8(j)));
-      strip.show();
-    }
-  }
-
-  delay(500); // Pause 1/2 second
 }
+//joseph wrote this
 void setupTime()
 {
+  delay(1000);
   lcd.clear();
   lcd.setCursor(2, 0);
   lcd.print("Setting Up Time!");
@@ -1550,6 +1415,7 @@ void setupTime()
   timeNum = 0;
   setTime(hour1, min1, 30, day1, month1, year1);
 }
+//joseph wrote this
 void setupMonth()
 {
   month1 = 0;
@@ -1580,6 +1446,7 @@ void setupMonth()
   Serial.println("Month Set: " + month1);
   delay(1500);
 }
+//joseph wrote this
 void setupDay()
 {
   day1 = 0;
@@ -1610,6 +1477,7 @@ void setupDay()
   Serial.println("Day Set: " + day1);
   delay(1500);
 }
+//joseph wrote this
 void setupYear()
 {
   year1 = 0;
@@ -1640,6 +1508,7 @@ void setupYear()
   Serial.println("Year Set: " + year1);
   delay(1500);
 }
+//joseph wrote this
 void setupHour()
 {
   hour1 = 0;
@@ -1670,6 +1539,7 @@ void setupHour()
   Serial.println("Hour Set: " + year1);
   delay(1500);
 }
+//joseph wrote this
 void setupMin()
 {
   min1 = 0;
@@ -1699,7 +1569,9 @@ void setupMin()
   lcd.print(min1);
   Serial.println("Min Set: " + year1);
   delay(1500);
+  return;
 }
+//joseph wrote this
 void displayTempTime()
 {
   //Sensor takes a bit to read sometimes, best to delay at 2
@@ -1745,6 +1617,10 @@ void displayTempTime()
   lcd.print((int)h * 0.1);
   lcd.print("%");
 }
+//initialization of bot
+//asking for when the user wanna wake up,
+//their goals, etc.
+//and a cool welcome message hehe
 void firstTime()
 {
   lcd.clear();
@@ -1773,8 +1649,10 @@ void firstTime()
   setupCheckIn();
   setUpGoals();
 }
+//setting up the check in times
+//can be accessed by user anytime via menu
 void setupCheckIn(){
- button();
+  delay(1000);
  lcd.clear();
  lcd.setCursor(0,0);
  lcd.print("When would you like");
@@ -1782,6 +1660,7 @@ void setupCheckIn(){
  lcd.print("to have your morning");
  lcd.setCursor(0,2);
  lcd.print("check in?");
+ button();
   while (!ButtonPressed)
   {
     button();
@@ -1795,6 +1674,8 @@ void setupCheckIn(){
       encoderPos = 0;
     }
     lcd.print(encoderPos);
+    //to make sure the user is not confused about
+    //am or pm XD
     if(encoderPos<12){
       lcd.setCursor(11,3);
       lcd.print("a.m.");
@@ -1887,13 +1768,17 @@ void setupCheckIn(){
     }
   }
 }
+//setting up goals of check ins
+//can be accessed by user anytime via menu
 void setUpGoals(){
-button();
+delay(1000);
  lcd.clear();
  lcd.setCursor(0,0);
  lcd.print("How many hours would");
  lcd.setCursor(0,1);
  lcd.print("you like to sleep?");
+ delay(300);//uhhh
+  button();
   while (!ButtonPressed)
   {
     button();
@@ -1988,6 +1873,8 @@ button();
     }
   }
 }
+//just a page to show all the data
+//collected from check ins
 void stats(){
   lcd.clear();
   lcd.setCursor(0,0);
@@ -2013,11 +1900,13 @@ void stats(){
       lcd.clear();
     }
 }
+//check if a new day has passed
 void newDay(){
  if(hour()==0&&minute()==0&&second()==0){
    daysActive++;
  }
 }
+//check if it is time to do check in
 void timeForCheckIn(){
  if(hour()==morningCheckInTime){
    morningCheckIn();
@@ -2028,6 +1917,7 @@ void timeForCheckIn(){
    nightCheckIn();
  }
 }
+//check if aurora bot needs to be initialized
 void isJustRestarted(){
    if(justRestarted){
     firstTime();
@@ -2035,8 +1925,8 @@ void isJustRestarted(){
   }
 }
 void loop(){
-  isJustRestarted();
-  newDay();
-  menuButton();
-  timeForCheckIn();
+ isJustRestarted();
+ newDay();
+ menuButton();
+ timeForCheckIn();
 }
