@@ -1110,7 +1110,7 @@ void detoxDrink(){
     }
   }
 }
-//joseph wrote this:
+//main menu function to switch between tabs and functions
 void mainMenu()
 {
   int select = 0;
@@ -1130,6 +1130,7 @@ void mainMenu()
 
   while (!ButtonPressed) {
     button();
+    //using lcd cursor as selection indicator
     lcd.cursor();
     if (encoderPos == 1) {
       lcd.setCursor(0,1);
@@ -1152,6 +1153,7 @@ void mainMenu()
       encoderPos = 1;
     }
   }
+ 
   if (ButtonPressed) {
     lcd.noCursor();
     ButtonPressed = false;
@@ -1173,8 +1175,9 @@ void mainMenu()
     }
   }
 }
+
 //simple lighting control
-//i have 4 options prepared!
+//there are four options prepared!
 int lightingControl()
 {
   lcd.clear();
@@ -1361,7 +1364,7 @@ void LED_PartyMode(int rainbowLoops)
     }
   }
 }
-//joseph wrote this
+//function to allow user to input time and date
 void setupTime()
 {
   delay(1000);
@@ -1415,7 +1418,7 @@ void setupTime()
   timeNum = 0;
   setTime(hour1, min1, 30, day1, month1, year1);
 }
-//joseph wrote this
+//this function allows user to set the month
 void setupMonth()
 {
   month1 = 0;
@@ -1446,7 +1449,7 @@ void setupMonth()
   Serial.println("Month Set: " + month1);
   delay(1500);
 }
-//joseph wrote this
+//this function allows user to set the day
 void setupDay()
 {
   day1 = 0;
@@ -1477,7 +1480,7 @@ void setupDay()
   Serial.println("Day Set: " + day1);
   delay(1500);
 }
-//joseph wrote this
+//this function allows user to set the year
 void setupYear()
 {
   year1 = 0;
@@ -1508,7 +1511,7 @@ void setupYear()
   Serial.println("Year Set: " + year1);
   delay(1500);
 }
-//joseph wrote this
+//this function allows user to set the hour
 void setupHour()
 {
   hour1 = 0;
@@ -1539,7 +1542,7 @@ void setupHour()
   Serial.println("Hour Set: " + year1);
   delay(1500);
 }
-//joseph wrote this
+//this function allows user to set the minute
 void setupMin()
 {
   min1 = 0;
@@ -1571,19 +1574,20 @@ void setupMin()
   delay(1500);
   return;
 }
-//joseph wrote this
+//this function displays the time and temperature
 void displayTempTime()
 {
-  //Sensor takes a bit to read sometimes, best to delay at 2
+  //Sensor takes a bit to read sometimes, best to delay at 5
   delay(5000);
-  // Read temperature as Celsius
+  //reads temperature as Celsius
   float c = dht.readTemperature();
-  // Read temperature as Fahrenheit (isFahrenheit = true)
+  //reads temperature as Fahrenheit (isFahrenheit = true)
   float f = dht.readTemperature(true);
-
+  //reads humidity
   float h = dht.readHumidity();
   Serial.print(c);
   Serial.print(f);
+  //in case sensor doesn't pick up readings, this code displays the last known readings
   if (!(isnan(c)))
   {
     pc = c;
