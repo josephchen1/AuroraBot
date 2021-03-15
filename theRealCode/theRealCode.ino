@@ -153,7 +153,8 @@ void menuButton()
   }
   delay(1);
 }
-//copied from web
+//copied and edited from:
+//https://www.instructables.com/Improved-Arduino-Rotary-Encoder-Reading/
 void PinA()
 {
   reading = PIND & 0xC;
@@ -168,7 +169,8 @@ void PinA()
     bFlag = 1;
   }
 }
-//copied from web
+//copied and edited from:
+//https://www.instructables.com/Improved-Arduino-Rotary-Encoder-Reading/
 void PinB()
 {
   reading = PIND & 0xC;
@@ -900,7 +902,8 @@ void nightCheckIn()
       }
     }
 }
-//the recipes are copied online
+//the recipes are copied and edited from:
+//https://wholefully.com/8-staple-smoothies-know-make/
 void detoxDrink(){
   button();
   lcd.clear();
@@ -1177,7 +1180,7 @@ void mainMenu()
 }
 
 //simple lighting control
-//there are four options prepared!
+//there are three options prepared!
 int lightingControl()
 {
   lcd.clear();
@@ -1255,7 +1258,8 @@ int lightingControl()
     }
   }
 }
-//copied from web
+//copied from:
+//https://github.com/adafruit/Adafruit_NeoPixel/blob/master/examples/RGBWstrandtest/RGBWstrandtest.ino
 void LED_RGBBeam(uint32_t color, int wait)
 {
   for (int i = 0; i < strip.numPixels(); i++)
@@ -1265,7 +1269,8 @@ void LED_RGBBeam(uint32_t color, int wait)
     delay(wait);
   }
 }
-//copied from web
+//copied from:
+//https://github.com/adafruit/Adafruit_NeoPixel/blob/master/examples/RGBWstrandtest/RGBWstrandtest.ino
 void LED_Rainbow(int whiteSpeed, int whiteLength)
 {
 
@@ -1317,7 +1322,8 @@ void LED_Rainbow(int whiteSpeed, int whiteLength)
     }
   }
 }
-//copied from web
+//copied from:
+//https://github.com/adafruit/Adafruit_NeoPixel/blob/master/examples/RGBWstrandtest/RGBWstrandtest.ino
 void LED_PartyMode(int rainbowLoops)
 {
   int fadeVal = 0, fadeMax = 100;
@@ -1879,6 +1885,7 @@ delay(1000);
 }
 //just a page to show all the data
 //collected from check ins
+//can be accessed by user anytime via menu
 void stats(){
   lcd.clear();
   lcd.setCursor(0,0);
